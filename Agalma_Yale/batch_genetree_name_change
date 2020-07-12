@@ -1,0 +1,6 @@
+#!/bin/bash
+#SBATCH -J name_change
+#SBATCH -t 4:00:00
+#SBATCH -c 8
+
+find . -type f -name "*.txt" -print0 | xargs -0 sed -E -i 's/([a-zA-Z]*_[a-zA-Z]*)_[a-zA-Z]*_[a-zA-Z]*/\1/g' 
