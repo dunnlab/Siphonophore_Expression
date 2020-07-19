@@ -216,6 +216,8 @@ S_new<-data.frame( S_new=c("F","G","H","I","J","K","L","X","A","B","C","D","E" )
 	
 	edges_tidy$change_abs = abs( edges_tidy$change )
 	
+	#remove zooid values from branches where there shouldn't be any (due to topological issues)
+	
 	edges_tidy<-edges_tidy %>% group_by(S_child,treatment) %>% filter(n()>300) %>% ungroup()
 	
 ```
@@ -653,13 +655,15 @@ Catriona Munro^1,2^,  Stefan Siebert^3^, Felipe Zapata^4^, Mark Howison^5^, Stev
 
 ## Introduction {-}
 
+Gene expression is an important component of phenotypic diversity within and among units of biological organization, including cells, tissues, organs, and species [@Brawand:2011du; @gilad2005multi; @king1975evolution; @rifkin2003evolution]. There are a number of ways in which gene expression can change, including in the relative magnitude of expression, or temporal or spatial shifts in expression [@carroll2005evolution; @romero2012comparative; @wray2003evolution]. With high throughput RNA-seq data, we are able to quantify the relative expression level of a large number of genes within and among species, homologous organs, and developmental timepoints. Based primarily on qualitative distance measures and principal component analysis (PCA) of expression across 1:1 orthologs, most studies suggest that gene expression is more conserved among homologous organs of the same type across different species than among different organs within the same species; suggesting that molecular, cellular and developmental pathways are highly conserved among species [@Brawand:2011du; @breschi2016gene; @cardoso2019gene; @clarke2017evolutionary; @gilad2015reanalysis; @khaitovich2004neutral; @merkin2012evolutionary; @10.1093/molbev/msz212]. Other studies found the opposite result [@lin2014comparison; @pankey2014predictable; @tschopp2014relative; @yang2013organ], however re-analyses contest these findings [@gilad2015reanalysis; @gu2015understanding; @sudmant2015meta]. These global patterns of gene expression, however, fail to account for gene-specific patterns, which may vary in organ and species specificity, and clustering patterns may be driven by the behavior of a small subset of genes [@breschi2016gene].  In this study, we take a gene-centric approach using phylogenetic comparative methods (PCMs) to compare gene expression patterns between different siphonophore zooids, and one specialized tissue, and map expression values directly onto gene trees, in order to investigate evolutionary changes gene expression of different tissues across branches in gene trees.
+
+Only a handful of studies have applied PCMs to compare gene expression values across species [@clarke2017evolutionary; @Chang:2014hq; @Chen229096; @Eng:2009gp; @gu2004statistical; @Oakley:2005ky; @Rohlfs:2015bd; @stern2018evolution; @Whitney:2011fw]. PCMs were developed to address challenges in comparing trait data across species, particularly the non-independence of traits due to the evolutionary history of the species [@dunn2013phylogenetic; @Felsenstein:1985ua; @Felsenstein:2008cl; @FitzJohn:2012ey;@Grafen:1989um; @Revell:2012jd; @Pagel:1999gc; @Uyeda:2014jl]. Multiple pairwise comparisons are frequently used in comparative genomic work, however re-analysis of the same data using PCMs has been shown to support very different conclusions; underscoring the importance of considering species relationships when making statements about evolutionary processes [@dunn2018pairwise].
+
+Analyses of gene expression that do take phylogeny into account typically focus on strict orthologs and map expression values onto the species tree [@Chen229096;Oakley:2005ky; @Rohlfs:2015bd; @stern2018evolution], while other analyses use the expression values themselves to build neighbor-joining trees [@Brawand:2011du; @stern2018evolution]. However, in addition to understanding species relationships, understanding the homology of genes is critical for understanding the evolution of gene expression. Gene phylogenies are often used to study species relationships and the history of gene duplication and loss, but they are more useful than that -- they can also be used to study the evolution of gene traits such as expression. Gene phylogenies are hypotheses about the evolutionary relationship of gene sequences to one another, and gene topology reflects a number of evolutionary events, including speciation events, gene duplication and loss, and molecular evolution.
+
 Siphonophores are highly complex, colonial "superorganisms" consisting of asexually produced bodies (termed zooids) that are homologous to solitary free-living polyps and medusae, but that share a common gastrovascular cavity [@dunn2006evolution;@mackie1963; @mackie1986aggregates;@mackie1987siphonophore;@totton1965synopsis]. The functional specialization of siphonophore zooids has been of central interest to zoologists since the 19th century, in part because siphonophores are considered to have a greater level of functional specialization than any other colonial animal, but also because these zooids are highly interdependent [@Beklemishev1969; @mackie1963].
 
-Siphonophore colonies arise from a single embryo, which forms a primary feeding protozooid with a tentacle, and a growth zone, from which genetically identical but morphologically and functionally diverse zooids bud asexually [@carre1967;@carre1969etude;@carre1991complete;@carre1993ordre]. Unlike other colonial hydrozoans [@blackstone1991shape;@dudgeon1996growing], the development of the colony is highly consistent - functionally specialized zooids are typically found linearly along a central stem, and are precisely arranged in repeating units termed cormidia [@dunn2006evolution]. The patterns of zooid arrangement within cormidia vary between species [@dunn2006evolution]. Zooids are considered to be functionally specialized for particular tasks, including feeding, reproducing, defending, and swimming (see Fig. \@ref(fig:zooids-definition)). Most siphonophore colonies consists of two major regions: the nectosome region, with a growth zone generating nectophores (swimming zooids), and the siphosome region, which is posterior to the nectosome, with another growth zone that gives rise to the rest of the zooid types, including gastrozooids (feeding zooids), palpons (circulatory/digestive zooids), bracts (defensive zooids), and gonophores (reproductive zooids). Within the two regions of growth, zooids are arranged along an anterior-posterior axis from youngest to oldest, with the youngest zooids forming as pro-buds within the growth zone, being carried posteriorly over time by the elongating stem [@dunn2006evolution]. This means that different ontogenetic stages are clearly identifiable within a single colony.
-
 Efforts to investigate the functional specialization of siphonophores have been limited, in part because there have been few detailed investigations of zooid structure. In the last half century, the microanatomy of siphonophore zooids and tissues has been investigated in only a handful of siphonophore species [@BARDI2007; @carre1969etude;@church2015histology; @Mackie1960]. This leaves many unknowns about how zooid structure and function differ across zooid types and species. Recent *in situ* gene expression analyses in siphonophores have described where a small number of pre-selected genes are expressed at high spatial resolution [@church2015histology; @Siebert:2011gv;@siebert2015stem], but these methods are limited since they require a large number of specimens per gene and siphonophores are relatively difficult to collect. RNA-seq analyses of hand-dissected specimens [@macrander2015rna;@sanders2014differential;@sanders2015interspecific;@Siebert:2011gv], in contrast, can describe the expression of a very large number of genes at low spatial resolution. The fact that so much data is obtained from each specimen is particularly advantageous in difficult-to-collect organisms like siphonophores. An earlier RNA-seq study of gene expression in two zooid types in a single siphonophore species showed the potential of this method to better understand differences between zooids [@Siebert:2011gv]. 
-
-Across the siphonophore phylogeny, there are multiple instances of zooid gain and loss [@Dunn:2005dy; @munro2018improved]. In particular, there are a number of cases where there are lineage-specific expansions of particular zooid types. For example, as seen in the nectophores of the calycophorans [@Dunn:2005dy]. The gastrozooids are another zooid that is thought to have been duplicated/modified in a lineage specific manner. One such example is in *Physalia physalis*  [@munro2019morphology]. In most siphonophores, the gastrozooid has a tentacle to capture food as well as an oral opening to ingest food. In *Physalia*, these structures and tasks are split across two types of zooids. The zooid type referred to as the gastrozooid has an oral opening and no tentacle, and another zooid, referred to as the tentacular palpon, has a tentacle but no oral opening. The tentacular palpon has been hypothesized to be a modified, mouth-less, gastrozooid that is functionally specialized for nematocyst production and prey capture. In *Bargmannia* species, two hypothesized types of gastrozooids have been identified based on size and morphology, however it is unclear if these zooids perform distinct functions within the colony [@dunn2005complex]. Finally, palpons are another zooid type that are very broadly defined based on morphology and behavior - they have a mouth that is used for egestion, but generally have reduced tentacles (termed palpacles) that are not involved in prey capture [@mackie1963fishing; @totton1965synopsis]. In different species, palpons may be found in different locations in the colony, and are frequently sub-categorized based on this - for example, the nectosomal palpons in *Apolemia lanosa* [@siebert2013re]. The exact homology of these zooids is unclear. Palpons in these locations may have arisen from other palpons or may represent a *de novo* modification of gastrozooids [@munro2018improved].
 
 (ref:zooids-definition) Schematic of the siphonophore *Nanomia bijuga*, with highlighted zooids and pneumatophore, with explanations of known function. NGZ - nectosomal growth zone. SGZ - siphosomal growth zone. Diagram by Freya Goetz (http://commons.wikimedia.org/wiki/File:Nanomia_bijuga_whole_animal_and_growth_zones.svg)
 
@@ -669,9 +673,7 @@ knitr::include_graphics("Figures/Siphonophoresare.pdf")
 
 ```
 
-In addition to understanding species relationships, understanding the homology of genes is critical for understanding the evolution of gene expression across species. Gene phylogenies are often used to study species relationships and the history of gene duplication and loss, but they are more useful than that -- they can also be used to study the evolution of gene traits such as expression. Gene phylogenies are hypotheses about the evolutionary relationship of gene sequences to one another, and gene topology reflects a number of evolutionary events, including speciation events, gene duplication and loss, and molecular evolution. Many analyses of comparative expression avoid these complicated evolutionary histories by focusing exclusively on strict 1:1 orthologs, that is, gene families that show no evidence of duplication events. The common ancestor of these genes is assumed to be the gene found in the genome of the common ancestor of the species that are considered in the study. There are a number of reasons for a focus on strict 1:1 orthologs [@dunn2016comparative], some of these reasons are practical -- it greatly simplifies analyses when complex gene histories are not considered; but it also reflects implicit or explicit assumptions about orthologs and paralogs, for example, that strict orthologs are not impacted by neofunctionalization or subfunctionalization events that are hypothesized to be more frequent following duplication [@Force:1999tg; @Hughes:1994ec; @Lynch:2000um; @Ohno:1970wm], or they have more conserved function relative to paralogs [@Gabaldon:2013fi;@Nehrt:2011bm]. 
-
-In this study we use RNA-seq data to conduct differential expression analyses among siphonophore zooids, and one specialized tissue (the pneumatophore, a gas filled float), within siphonophore species, and also map RNA-seq data directly onto gene phylogenies in order to compare evolutionary changes in expression within zooid types across species. 
+In this study we use RNA-seq data to conduct differential expression analyses among siphonophore zooids, and one specialized tissue (the pneumatophore, a gas filled float), within siphonophore species, and also map RNA-seq data directly onto gene phylogenies in order to compare gene expression signatures within zooid types across species. We also investigate differential gene expression patterns within species, in particular focusing on three species-specific zooid types that represent lineage specific zooid diversification events. 
 
 ## Results {-}
 
@@ -1286,8 +1288,6 @@ change<-function(col_value,nhx){
 plottreeexpression<-function(gene_tree,col_value){
   
 nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==gene_tree][[1]]
-
-blast_hit <- genes_to_tips %>% dplyr::filter(gene_tree==gene_tree) %>% .$blast_hit
     
 edge<-change(col_value,nhx)
 
@@ -1295,7 +1295,7 @@ levels(nhx@data$Ev)<-c("D","S")
 
 tips<-pull(nhx@data,col_value)
 
-top_hit<-nhx@data$blast_hit %>% max(.,na.rm=TRUE)
+top_hit<-nhx@data$blast_hit %>% median(.,na.rm=TRUE)
 
 p<-nhx %>% ggtree()+ geom_tiplab(aes( label=phy_node_names ), hjust=-0.1)+geom_nodepoint(aes( color=Ev )) +xlim(c(0,1))
 
@@ -1364,7 +1364,7 @@ p<-p+geom_text(aes(label=round(tips$col_value[[8]],3)),vjust=4.5,hjust=1, size=3
 return(p)
 }
 ```
-In order to compare expression patterns for each zooid across siphonophore species, we used transcriptome and genome data from `r species_tree$tip.label %>% length()` cnidarian species to generate a total of `r gene_trees %>% length()` gene trees, of which `r gene_trees_ace_calibrated[!is.na(gene_trees_ace_calibrated)] %>% length()` gene trees passed filtering criteria. We used Orthofinder [@emms2019orthofinder] to reconcile the species tree and the gene trees and identify nodes that represent speciation and duplication events (Fig. \@ref(fig:methods-comp) step 1). Pruned and unpruned calibrated gene tree files are available as supplementary data. The number of genes represented in these gene trees is shown in table \@ref(tab:summarize-libraries). The internal nodes on these gene trees consist of `r nodes_ace %>% filter(is.na(species) & Ev=="S") %>% nrow()` speciation events and `r nodes_ace %>% filter(is.na(species) & Ev=="D") %>% nrow()` duplication events. Expression values, as transcripts per million 10K (TPM10K, see methods), were mapped to the tips of the gene trees (Fig. \@ref(fig:methods-comp) step 2), and maximum likelihood trait values were reconstructed at the nodes (Fig. \@ref(fig:methods-comp) step 3). Changes in expression across branches were calculated based on the difference between parent and child nodes, scaled by the branch length (Fig. \@ref(fig:methods-comp) step 4). We focused on expression in a subset of zooids and tissues that are common across the sampled species: gastrozooids (developing and mature), nectophores (developing), palpons (mature), male and female gonodendra, and the pneumatophore. An exemplar gene tree, for Wnt family genes, with expression values from two zooids mapped at the nodes and tips is shown in figure \@ref(fig:wnt-plot).  
+In order to compare expression patterns for each zooid across siphonophore species, we used transcriptome and genome data from `r species_tree$tip.label %>% length()` cnidarian species to generate a total of `r gene_trees %>% length()` gene trees, of which `r gene_trees_ace_calibrated[!is.na(gene_trees_ace_calibrated)] %>% length()` gene trees passed filtering criteria. We used Orthofinder [@emms2019orthofinder] to reconcile the species tree and the gene trees and identify nodes that represent speciation and duplication events (Fig. \@ref(fig:methods-comp), step 1). Pruned and unpruned calibrated gene tree files are available as supplementary data. The number of genes represented in these gene trees is shown in table \@ref(tab:summarize-libraries). The internal nodes on these gene trees consist of `r nodes_ace %>% filter(is.na(species) & Ev=="S") %>% nrow()` speciation events and `r nodes_ace %>% filter(is.na(species) & Ev=="D") %>% nrow()` duplication events. Expression values, as transcripts per million 10K (TPM10K, see methods), were mapped to the tips of the gene trees (Fig. \@ref(fig:methods-comp), step 2), and maximum likelihood trait values were reconstructed at the nodes (Fig. \@ref(fig:methods-comp), step 3). Changes in expression across branches were calculated based on the difference between parent and child nodes, scaled by the branch length (Fig. \@ref(fig:methods-comp), step 4) [@dunn2018pairwise]. We focused on expression in a subset of zooids and tissues that are common across the sampled species: gastrozooids (developing and mature), nectophores (developing), palpons (mature), male and female gonodendra, and the pneumatophore. An exemplar gene tree, for Wnt family genes, with expression values from two zooids mapped at the nodes and tips is shown in figure \@ref(fig:wnt-plot).  
 
 (ref:methods-comp) Methods used to identify changes in expression across branches in gene trees. In step 1, we have labelled each of the nodes in the siphonophore phylogeny, and identified equivalent speciation nodes across every gene tree (an exemplar is shown here). Step 2, we map expression values to the tips (TPM10K). Step 3, reconstruct ancestral trait expression values at all nodes where expression data is available. Step 4, we calculate scaled change in expression across branches and divide by the branch length. Branch length is calibrated to the species tree branch lengths. Step 5, we identify branches in gene trees that correspond to equivalent branches in the species tree. There may be more than one branch in a gene tree that corresponds to the same branch in the species tree.
 
@@ -1374,7 +1374,7 @@ knitr::include_graphics("figures/Methods_figure.pdf")
 
 ```
 
-We first considered the evolutionary change in expression along branches in the gene tree that correspond to branches in the species tree. These are identified as gene tree branches that have parent and child nodes that are both speciation events and that correspond to speciation events and branches in the species tree (Fig. \@ref(fig:methods-comp) step 5). This method enables the selection of specific branches within gene trees that are equivalent to branches within the species tree, and are thus comparable with one another across all gene trees. Unlike a strict 1:1 ortholog approach, this approach considers equivalent branches that are descended from speciation events, but that have more complex evolutionary histories. For example, due to deeper gene duplication events, gene trees often contain multiple branches that correspond to the same branch in the species tree (Fig. \@ref(fig:methods-comp) step 5). Our method allows us to consider all of these branches. Strict ortholog methods would discard some or all data impacted in this way by duplication events. Each speciation node in a gene tree is assigned an identifier that corresponds to the equivalent node in the species phylogeny. Each branch in the species tree is given a unique letter, as shown in figure \@ref(fig:changes), and the corresponding branches in gene trees are given the same letter. A simulated data set of random expression values was also obtained by using a Brownian motion model with empirically derived mean and standard-deviation values for each gene tree. Under this model, expression variance accumulates among linages on the gene tree as a function of time, and is used as a model of evolution under drift, as well as some forms of natural selection [@felsenstein1973maximum;@revell2008testing;@revell2008phylogenetic].
+We first considered the evolutionary change in expression along branches in the gene tree that correspond to branches in the species tree. These are identified as gene tree branches that have parent and child nodes that are both speciation events and that correspond to speciation events and branches in the species tree (Fig. \@ref(fig:methods-comp), step 5). This method enables the selection of specific branches within gene trees that are equivalent to branches within the species tree, and are thus comparable with one another across all gene trees. Unlike a strict 1:1 ortholog approach, this approach considers equivalent branches that are descended from speciation events, but that have more complex evolutionary histories. For example, due to deeper gene duplication events, gene trees often contain multiple branches that correspond to the same branch in the species tree (Fig. \@ref(fig:methods-comp), step 5). Our method allows us to consider all of these branches. Strict ortholog methods would discard some or all data impacted in this way by duplication events. Each speciation node in a gene tree is assigned an identifier that corresponds to the equivalent node in the species phylogeny. Each branch in the species tree is given a unique letter, as shown in figure \@ref(fig:changes), and the corresponding branches in gene trees are given the same letter. A simulated data set of random expression values was also obtained by using a Brownian motion model with empirically derived mean and standard-deviation values for each gene tree. Under this model, expression variance accumulates among linages on the gene tree as a function of time, and is used as a model of evolution under drift, as well as some forms of natural selection [@felsenstein1973maximum;@revell2008testing;@revell2008phylogenetic].
 
 ```{r changes, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap="Mean changes along branches across all gene trees that correspond to branches in the species tree, error bar is one standard deviation. Top panel: species phylogeny with branch IDs given as numbers. Lower panel: Distribution of changes along a branch in a gene tree, showing mean change in the empirical dataset and in the BM simulation. Branch refers to the branch ID in the species tree. Treatment type is coded in colour, Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.scap="Mean changes along branches across all gene trees that correspond to branches in the species tree, error bar is one standard deviation.", fig.align='center'}
 
@@ -1389,25 +1389,28 @@ The distribution of expression changes along branches in gene trees that corresp
 Global patterns of expression change across all branches and tissues/zooids provides perspective on potential linage-specific shifts in expression in each zooid/tissue. These results point to a subset of branches in gene trees for particular zooids with large increases or decreases in expression across the branch. These patterns were particularly strong for palpons, where on average changes in expression were highly negative across branches leading to the clade containing *Nanomia bijuga* and *Agalma elegans*, while on average changes in expression were highly positive across branches leading to *Frillagalma vityazi*. We identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% nrow()` gene tree branches in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% .$gene_tree %>% unique() %>% length()`gene trees corresponding to branch J (branch leading to *Frillagalma vityazi*, fig \@ref(fig:changes)) with large (>10) positive changes in expression across the branch. Among these, we identified several gene families of interest that show large lineage specific increases in expression in Palpons, including genes involved in patterning and development such as Wnt receptor Frizzled-4, Wnt ligand Wnt2, and homeobox gene Otx-2. For the pneumatophore, we identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% nrow()` gene tree branches corresponding to branch J in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% .$gene_tree %>% unique() %>% length()` gene trees with large (>10) positive changes in expression across the branch, including homeobox proteins SAX-1 and Hox-B8 - the latter gene showed low or no TPM10K expression in *Nanomia bijuga*, *Agalma elegans*, and *Apolemia lanosa* pneumatophores and high expression in *Frillagalma vityazi* pneumatophores. The full list of branches and changes in expression across the branch and tissue/zooid are available in supplementary file 3. 
 
 ```{r output_supp, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE}
-new_edges<-edges_tidy %>% left_join(.,S_new, by=c("S_child"="S")) %>% dplyr::select(gene_tree, S_new, treatment, change, blast_hit) %>% rename(S_new="Branch_ID", treatment="Zooid")
+
+new_edges <- edges_tidy %>% left_join(.,S_new, by=c("S_child"="S")) %>% dplyr::select(gene_tree, S_new, treatment, change, blast_hit) %>% dplyr::rename(.,c(Branch_ID=S_new,Zooid=treatment))
 
 readr::write_csv(new_edges, "Supplementary_Data/Supplementaryfile3.csv", na = "NA")
 
-for(tree in 1:length(gene_trees_ace_calibrated_pruned)){
-if(!is.na(gene_trees_ace_calibrated_pruned[[tree]])){
-ape::write.tree(gene_trees_ace_calibrated_pruned[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees_pruned/",gene_trees_ace_digests[[tree]],".txt"))
-}
-}
+#output trees - to be re run for any/all re-runs of prep files
 
-for(tree in 1:length(gene_trees_ace_calibrated)){
-if(!is.na(gene_trees_ace_calibrated[[tree]])){
-ape::write.tree(gene_trees_ace_calibrated[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees/",gene_trees_ace_digests[[tree]],".txt"))
-}
-}
+# for(tree in 1:length(gene_trees_ace_calibrated_pruned)){
+# if(!is.na(gene_trees_ace_calibrated_pruned[[tree]])){
+# ape::write.tree(gene_trees_ace_calibrated_pruned[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees_pruned/",gene_trees_ace_digests[[tree]],".txt"))
+# }
+# }
+# 
+# for(tree in 1:length(gene_trees_ace_calibrated)){
+# if(!is.na(gene_trees_ace_calibrated[[tree]])){
+# ape::write.tree(gene_trees_ace_calibrated[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees/",gene_trees_ace_digests[[tree]],".txt"))
+# }
+# }
 
 ```
 
-Next, we were interested in branch level patterns of expression, focusing on whether change in expression across the same branch is correlated between different zooids. We investigated the co-variance structure of changes across particular branches (that correspond to species tree branches) within gene trees among different zooids/the pneumatophore (Figs. \@ref(fig:covariances)). For change across the same branch within a gene tree that corresponds to a particular branch in the species tree, there is a positive correlation between pairwise comparisons of zooids/the pneumatophore. In particular, changes across all branches are highly correlated between developing and mature gastrozooids. Changes in expression across the same branch were also highly correlated between gastrozooids and palpons, especially so across branches corresponding to branch K in the species tree (branch leading to *Agalma elegans*).  Meanwhile, changes across all branches are much less correlated between any zooid/the pneumatophore and both the male or female gonodendra.  
+Next, we were interested in branch level patterns of expression, focusing on whether change in expression across the same branch in a gene tree is correlated between different zooids. We investigated the co-variance structure of changes across particular branches (that correspond to species tree branches) within gene trees among different zooids/the pneumatophore (Figs. \@ref(fig:covariances)). For change across the same branch within a gene tree that corresponds to a particular branch in the species tree, there is a positive correlation between pairwise comparisons of zooids/the pneumatophore. In particular, changes across all branches are highly correlated between developing and mature gastrozooids. Changes in expression across the same branch were also highly correlated between gastrozooids and palpons, especially so across branches corresponding to branch K (\@ref(fig:changes), top panel) in the species tree (branch leading to *Agalma elegans*).  Meanwhile, changes across all branches are much less correlated between any zooid/the pneumatophore and both the male or female gonodendra. These results suggest that changes in expression across gene tree branches are highly correlated among zooids - a large positive change in expression in one zooid across a gene tree branch that corresponds to branch L,  for example, will also typically see a large positive change in expression in another zooid across the same branch.
 
 ```{r covariances, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap="Siphonophore phylogeny and pairwise correlation of changes across a branch among different pairs of zooids/the pneumatophore. Correlation of changes from node to tip are shown in the plot to the right of the phylogeny. Changes between two nodes are shown adjacent to the child node. Color indicates correlation between 0.9 (red) and 0.5 (green). Treatment type is coded in colour along the x-axis, Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.align='center'}
 
@@ -1415,11 +1418,64 @@ knitr::include_graphics("Figures/Correlations.pdf")
 
 ```
 
+We were then able to identify instances of branches in gene trees where change in expression across the branch is negatively or positively correlated among different gene trees. One such example of lineage and zooid specific changes in expression is in a putative hydrozoan specific actinoporin-like gene family, with closest blast similarity to Auger and Cone snail tereporin/coroporin toxins. In this toxin-like family, we were able to identify one clade (clade Y, Fig. \@ref(fig:venom-plot)) with three branches corresponding to branches K, L and I in the species tree. The branches that correspond to I and K, leading to a *Diphyes dispar* and *Agalma elegans* gene respectively, both have large increases in mature gastrozooid expression across the branch, while the branch that corresponds to branch L (leading to *Nanomia bijuga*) has a large decrease in expression across the branch in mature gastrozooids and an independent large increase in expression for the same branch in mature palpons. For all other zooids/tissues the expression at the tips is close to 0, with only small changes in expression across the branch. In *Nanomia bijuga* the gene 976500 in Clade Y is significantly differentially expressed in mature palpons as compared to mature gastrozooids (log2 Fold Change 6.83224, Bonferroni adjusted p-value 0.000567528). These results point towards a lineage and zooid specific change in expression.
+
+This gene family shows a complex history of duplication events, with several deep duplication events prior to the divergence of siphonophores, and multiple species-specific duplication events. The exact function of these toxin-like genes is not known or characterized, however they appear to be found predominantly in gastrozooids and/or palpons. In the five duplicated *Physalia physalis* genes, expression is highest in mature gastrozooids relative to developing and mature tentacular palpons (the zooid that bears the tentacle), as well as the developing tentacle. The full phylogeny of all available hydrozoan genes is available in supplementary figure \@ref(fig:fullvenom-plot). The three *Clytia hemisphaerica* homologs are highly expressed specifically in the polyp head, and whole male and female medusa (blast search on Marine Invertebrate Models Database http://marimba-test.obs-vlfr.fr/, XLOC__029306, XLOC_013838, XLOC_029344).
+
+(ref:venom-plot) Pruned maximum likelihood gene tree of a venom gene family found in siphonophore species with expression values (TPM10K) at the tips and nodes. Mature gastrozooid expression in orange (above node), palpon expression in yellow (below node). Changes in expression across the branch are found in black boxes along the branch, orange = mature gastrozooid, yellow = mature  palpon. Red circles are duplication nodes and blue circles are speciation nodes.
+
+```{r venom-plot, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, fig.height=15, fig.width=15, fig.cap='(ref:venom-plot)', fig.align = 'center'}
+
+#pull gene tree digest
+
+venom<-edges_tidy[grep("Tereporin-Ca1",edges_tidy$blast_hit),] %>% .$gene_tree %>% unique()
+
+nhx_wider<-gene_trees_ace_calibrated[gene_trees_ace_digests==venom][[1]]
+venom_p<-nhx_wider %>% ggtree()+geom_nodepoint(aes( color=Ev ))+geom_tiplab() +xlim(c(0,0.5))
+nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==venom][[1]]
+tips1<-pull(nhx@data,"Gasmat")
+tips2<-pull(nhx@data,"Palmat")
+p1<-nhx %>% ggtree()+ geom_tiplab(aes( label=phy_node_names),pch=1, hjust=-0.1)+geom_nodepoint(aes( color=Ev )) +xlim(c(0,0.5))
+p1<-p1+geom_text(aes(label=round(tips1,2)),vjust=-1,hjust=1, size=3, col="#F97F06")
+p1<-p1+geom_text(aes(label=round(tips2,2)),vjust=1.5,hjust=1, size=3, col="#F7D114")
+
+edge <- change("Gasmat",nhx)
+edge2<- change("Palmat",nhx)
+p2<- p1 %<+% edge + geom_label(aes(x=branch, label=edge_num),label.size = 0.01,size=3, col="#F97F06")  
+p3 <- p1 %<+% edge2 + geom_label(aes(x=branch, label=edge_num),label.size = 0.01,size=3, col="#F7D114")
+
+##used the output from above to make the toxin plot
+
+knitr::include_graphics("Figures/Toxin_plot.pdf",auto_pdf = getOption("knitr.graphics.auto_pdf", FALSE))
+
+Physalia<-data.frame(treatment=e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@treatment, individual=e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@individual)
+
+venom_Physalia <- e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@tpm[rownames(e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@tpm) %in% c("344760","344764","388102","388106","368190"),] %>% t %>% as.data.frame()
+
+#plot of counts of all Physalia genes
+#venom_physalia %>% bind_cols(.,Physalia) %>% gather(1:5,key=gene,value=count) %>% ggplot()+geom_point(aes(x=treatment,y=log(count+1), col=gene))
+
+```
+
 ## Discussion {-}
+
+Colonial animals, consisting of genetically identical modules that are physically and physiologically connected, can be found across the metazoan tree of life [@hiebert2020coloniality]. Functional specialization has evolved multiple times within colonial groups, and siphonophores in particular are suggested to have the greatest diversity of functionally specialized zooids [@Beklemishev1969;@hiebert2020coloniality]. Functionally specialized siphonophore zooids have been likened to animal organs, with each functionally specialized zooid possessing distinct cell-types and performing distinct roles within the colony [@mackie1963]. While this analogy works well for understanding the function of zooids within the colony as a whole, the analogy falls short in terms of explaining the evolutionary origin and development of these biological units: functionally specialized zooids are evolutionarily homologous to free living organisms, they are multicellular, possess distinct cell types, and show regional subfunctionalization [@church2015histology;@Mackie1960;@totton1965synopsis]. While the developmental mechanisms generating zooids are very different (they arise asexually from a growth zone), the evolutionary processes acting on zooids may be similar to those acting on other modular biological units such as cell type, tissue, and organ [@hiebert2020coloniality]. Understanding the cellular and molecular processes underlying the patterning and molecular function of functionally specialized cnidarian zooids remain an open biological question, and in recent years there has been a focus in particular on differential gene expression patterns found in different functionally specialized zooids [@sanders2014differential; @sanders2015interspecific; @Siebert:2011gv]. In this study, we found a large number of genes that are differentially expressed within different siphonophore zooids, reflecting the distinct anatomy and function of these zooids. We were also able to identify potential transcription factors that are significantly differentially expressed within particular zooids, with potential homologs found in several species, which may be interesting candidates for future study in siphonophores or related cnidarian colonial groups.     
+
+Unique zooid types and zooid delimitation
+
+Evolution of gene expression
+
+### Comparison to other methods {-}
+
+With the expansion of functional genomic tools, including RNA-seq and single cell sequencing methods, we are able to look not only at how genomic variation gives rise to phenotypic diversity in a single species or organism, but also at how functional genomic variation shapes phenotypic diversity across a number (>2) of closely and distantly related species to understand broader evolutionary patterns and processes [@Brawand:2011du; @barbosa2012evolutionary; @breschi2016gene; @clarke2017evolutionary; @doi:10.1093/gbe/evw155; @merkin2012evolutionary; @necsulea2014evolution; @perry2012comparative;  @Levin:2016bp; @sudmant2015meta; @ma2018comparative; @yang2013organ; @zhang2014comparative]. The methods developed here are broadly applicable to a range of functional genomic data, in addition to existing RNA-seq data sets in other species.
+
+This approach presents several solutions to past limitations. We apply ancestral trait reconstruction methods to reconstruct expression values at nodes in gene trees and calculate changes across branches. This has several advantages -- we are able to take species relationships into account, and we are also able to overcome sampling issues at the tips, as expression values of different treatments can be reconstructed at deep internal nodes, even where there may be inconsistent sampling at the tips. We also propose a novel solution to identifying comparable genes across species. Where past approaches identify strict orthologs *before* conducting analyses, we use information from all genes within a gene tree regardless of their evolutionary history of duplication or speciation. Subsequently, we are then able to use information at the nodes to select branches in gene trees that correspond to particular branches in the species tree. This enables the selection of branches that are descended from speciation events, but that do not necessarily belong to gene trees where only single copy genes are found. This enables us to consider vastly more genes than we would be able to with a strict ortholog approach. Additionally, we are also able to compare expression following duplication and speciation events. Finally, by using gene trees, we are able to consider expression evolution within the context of the gene phylogeny, which may differ significantly from the species phylogeny. This enables us to consider the evolution of gene expression in context, considering not only the evolutionary relationships between genes, but also between species.
+
+There are, however, limitations to this approach as applied here. As with all methods that rely on mapping to reference transcriptomes rather than genomes, this approach is limited by the quality of the reference transcriptomes. Not all reference transcriptomes were sequenced to equal depth among species, and this has important effects on the presence or absence of genes from particular species within the gene tree. This not only has an effect on the representation of expression values, but also impacts the power to investigate patterns of expression among branches within a gene tree. However, with genome sequencing becoming cheaper and more readily available, the widespread availability of reference genomes will help alleviate many of these issues. Reference genomes will also improve gene models, enabling the distinction of different alleles of the same gene from paralogous genes, this in turn will improve the quality of the gene trees. 
 
 ## Methods {-}
 
-All scripts for the analyses are available in a git repository at XXXX. The most recent commit at the time of the analysis presented here was XXXX.
+All scripts for the analyses are available in a git repository at https://github.com/dunnlab/Siphonophore_Expression. The most recent commit at the time of the analysis presented here was XXXX.
 
 **Collecting** \newline
 Specimens were collected in the north-eastern Pacific Ocean in Monterey Bay and, in the case of _Physalia physalis_ the Gulf of Mexico. Specimens were collected by remotely operated vehicle (ROV) or during blue-water SCUBA dives. *Physalia* specimens were collected by hand from the beach after being freshly washed on-shore by prevailing winds. Available physical vouchers have been deposited at the Peabody Museum of Natural History (Yale University), New Haven, CT. Specimens were relaxed using 7.5% MgCl~2~ hexahydrate in Milli-Q water at a ratio of 1/3 MgCl~2~ and 2/3 seawater. Zooids were subsequently dissected from the colony and flash frozen in liquid nitrogen. Colonies were cooled to collection temperatures (e.g 4 degrees C for deep sea species) while the dissections took place. Dissections took no longer than 15-20 minutes. In the case of large colonies, the stem was cut and only partial sections of the colony were placed under the microscope at a given time. Each replicate individual represents a genetically distinct colony from the same species. Replicate specimens were of an equivalent colony size, and zooid replicates were also equivalent sizes. Larger zooid types, such as gastrozooids, were sampled as a single zooid, but smaller zooids were pooled. Pooled zooids were of a comparable maturity and sampled from the same location in a single colony. 
@@ -1432,7 +1488,7 @@ mRNA was extracted directly from tissue using Zymo Quick RNA MicroPrep (Zymo #R1
 **_Sequencing & Differential gene expression_** \newline
 Short read libraries were mapped to previously published transcriptomes (150bp paired end) [@munro2018improved] using Agalma v 2.0.0 [@Dunn:2013kw; @Guang202416], which uses a number of existing tools for transcript quantification, including RSEM (which uses Bowtie) [@langmead2009ultrafast;@li2011rsem]. Using the `agalmar` package (https://github.com/caseywdunn/agalmar), we filtered out genes that were flagged as being rRNA, and selected only protein coding genes. We also only considered genes that were greater than 0 in at least two libraries. Differential gene expression analyses, including normalization, were conducted in R, using the `DESeq2` package [@love2014moderated]. Libraries that were found to be outliers based on mean cook's distance were removed from the DESeq object and from downstream analyses and normalization. Testing for differential expression was conducted using the `results()` function in DESeq2. Genes were considered to be significantly differentially expressed if adjusted p-values (Bonferroni correction) were less than 0.05. Differential expression analyses were only conducted on zooids/tissue with two or more replicates.
 
-GO annotations were retrieved for each of the reference translated transcriptomes [@munro2018improved] using the PANNZER2 web server [@toronen2018pannzer2].The PANNZER2 format was modified to match the gene2GO format required for the package `topGO` [@topGO]. Gene set enrichment analyses were carried out within species using the R package `GOseq` [@young2010gene], which takes gene length into account. Over and underrepresented categories were calculated using the Wallenius approximation, and p-values were adjusted using the Benjamini and Hochberg method. Categories with an adjusted p-value below 0.05 are considered enriched. Gene set enrichment analyses were also conducted at the gene tree level, considering representative GO terms for particular gene trees. Representative GO terms were selected based on frequency of occurrence among genes in the gene tree. As gene lengths vary among species and genes in the gene tree, the `GOseq` approach could not be used, and `topGO` was used to detect GO terms that are enriched based on Fisher's exact test. This approach assumes that each gene tree has an equal probability of having genes shared among species that are detected as differentially expressed, however results may be biased by a number of factors, including mean gene length among genes in the gene tree [@young2010gene]. 
+GO annotations were retrieved for each of the reference translated transcriptomes [@munro2018improved] using the PANNZER2 web server [@toronen2018pannzer2].The PANNZER2 format was modified to match the gene2GO format required for the package `topGO` [@topGO]. Gene set enrichment analyses were carried out within species using the R package `GOseq` [@young2010gene], which takes gene length into account. Over and underrepresented categories were calculated using the Wallenius approximation, and p-values were adjusted using the Benjamini and Hochberg method. Categories with an adjusted p-value below 0.05 are considered enriched. Gene set enrichment analyses were also conducted at the gene tree level, considering representative GO terms for particular gene trees. Representative GO terms were selected based on the frequency of occurrence among genes in the gene tree. As gene lengths vary among species and genes in the gene tree, the `GOseq` approach could not be used, and `topGO` was used to detect GO terms that are enriched based on Fisher's exact test. This approach assumes that each gene tree has an equal probability of having genes shared among species that are detected as differentially expressed, however results may be biased by a number of factors, including mean gene length among genes in the gene tree [@young2010gene]. 
 
 **_Phylogenetic analysis of gene expression_** \newline
 Gene trees were generated using the transcriptomes and genomes from `r species_tree$tip.label %>% length()` species [@munro2018improved] using Agalma v 2.0.0 [@Dunn:2013kw; @Guang202416]. Following the `treefinder` step of Agalma v 2.0.0, amino acid data were exported and supplied to Orthofinder [@emms2019orthofinder] for simultaneous co-estimation of gene trees with the published maximum likelihood species tree [@munro2018improved]. Within Orthofinder, the selected multiple sequence alignment method was MAFFT [@katoh2013mafft] and maximum likelihood tree inference method was IQ-tree with the LG+F+R4 substitution model [@nguyen2015iq].
@@ -1483,42 +1539,42 @@ knitr::include_graphics("figures/DGE_figure.pdf",auto_pdf = getOption("knitr.gra
 diphyes_data <- DESeq2::plotPCA( dge$`K00162-189-HJTYGBBXX-7-NCAGTG`@rld, intgroup=c("treatment", "individual"), returnData=TRUE )
 percentVar_diph <- round( 100 * attr(diphyes_data, "percentVar") )
 
-diphyes_pca <- ggplot(diphyes_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"= 15,"Gastrozooid mature"= 0, "Bract mature"= 7, "Gonophore"=3)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_diph[1],"% variance")) +  ylab(paste0("PC2:",percentVar_diph[2],"% variance"))
+diphyes_pca <- ggplot(diphyes_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"= 15,"Gastrozooid mature"= 0, "Bract mature"= 7, "Gonophore"=3)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_diph[1],"% variance")) +  ylab(paste0("PC2:",percentVar_diph[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
 
 physalia_data<-DESeq2::plotPCA(dge$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@rld, intgroup=c("treatment", "individual"), returnData=TRUE )
 percentVar_phy <- round( 100 * attr(physalia_data, "percentVar") )
 
-physalia_pca <- ggplot(physalia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8,"Tentacular palpon mature"=10,"Tentacular palpon developing"=16,"Gas gland"=9, "Tentacle developing"=23,"Tentacle mature"=5)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_phy[1],"% variance")) +  ylab(paste0("PC2:",percentVar_phy[2],"% variance"))
+physalia_pca <- ggplot(physalia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8,"Tentacular palpon mature"=10,"Tentacular palpon developing"=16,"Gas gland"=9, "Tentacle developing"=23,"Tentacle mature"=5)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_phy[1],"% variance")) +  ylab(paste0("PC2:",percentVar_phy[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
 
 apolemia_data<-DESeq2::plotPCA(dge$`HWI-ST625-159-C4MVCACXX-5-CCGTCC`@rld, intgroup=c("treatment", "individual"), returnData=TRUE )
 percentVar_apol <- round( 100 * attr(apolemia_data, "percentVar") )
 
-apolemia_pca <- ggplot(apolemia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_apol[1],"% variance")) +  ylab(paste0("PC2:",percentVar_apol[2],"% variance"))
+apolemia_pca <- ggplot(apolemia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_apol[1],"% variance")) +  ylab(paste0("PC2:",percentVar_apol[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
 
 nanomia_data<-DESeq2::plotPCA(dge$`HWI-ST625-51-C02UNACXX-7-NANOMIA`@rld, intgroup=c("treatment", "individual"), returnData=TRUE )
 percentVar_nano <- round( 100 * attr(nanomia_data, "percentVar") )
 
-nanomia_pca <- ggplot(nanomia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19,"Nectophore developing "=18, "Palpons mature"=2,"Palpons developing"=17,"Gonodendron male"=13,"Gonodendron female"=10)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_nano[1],"% variance")) +  ylab(paste0("PC2:",percentVar_nano[2],"% variance"))
+nanomia_pca <- ggplot(nanomia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19,"Nectophore developing "=18, "Palpons mature"=2,"Palpons developing"=17,"Gonodendron male"=13,"Gonodendron female"=10)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_nano[1],"% variance")) +  ylab(paste0("PC2:",percentVar_nano[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
 
 frillagalma_data<-DESeq2::plotPCA(dge$`HWI-ST625-51-C02UNACXX-6-FRILLAGALMA`@rld, intgroup=c("treatment", "individual"), returnData=TRUE )
 percentVar_frill <- round( 100 * attr(frillagalma_data, "percentVar") )
 
-frillagalma_pca <- ggplot(frillagalma_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19,"Palpons mature"=2,"Gonodendron male"=13,"Gonodendron female"=10,"Bract developing"= 7)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_frill[1],"% variance")) +  ylab(paste0("PC2:",percentVar_frill[2],"% variance"))
+frillagalma_pca <- ggplot(frillagalma_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19,"Palpons mature"=2,"Gonodendron male"=13,"Gonodendron female"=10,"Bract developing"= 7)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_frill[1],"% variance")) +  ylab(paste0("PC2:",percentVar_frill[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
 
 bargmannia_data<-DESeq2::plotPCA(dge$`HWI-ST625-51-C02UNACXX-8-BARGMANNIA`@rld, intgroup=c("treatment", "individual"), returnData=TRUE )
 percentVar_barg <- round( 100 * attr(bargmannia_data, "percentVar") )
 
-bargmannia_pca <- ggplot(bargmannia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid white mature"=0,"Gastrozooid yellow mature"=14,"Gastrozooid yellow developing"=12,"Pneumatophore"=8, "Nectophore developing"=19,"Gonodendron male"=13,"Bract developing"= 7)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_barg[1],"% variance")) +  ylab(paste0("PC2:",percentVar_barg[2],"% variance"))
+bargmannia_pca <- ggplot(bargmannia_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid white mature"=0,"Gastrozooid yellow mature"=14,"Gastrozooid yellow developing"=12,"Pneumatophore"=8, "Nectophore developing"=19,"Gonodendron male"=13,"Bract developing"= 7)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_barg[1],"% variance")) +  ylab(paste0("PC2:",percentVar_barg[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
 
 agalma_data<-DESeq2::plotPCA(dge$`HWI-ST625-73-C0JUVACXX-7-AGALMA2`@rld, intgroup=c("treatment", "individual"), returnData=TRUE )
 percentVar_agalma <- round( 100 * attr(agalma_data, "percentVar") )
 
-agalma_pca <- ggplot(agalma_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19,"Palpons mature"=2,"Palpons B mature"=6,"Gonodendron male"=13,"Gonodendron female"=10,"Bract developing"= 7)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_agalma[1],"% variance")) +  ylab(paste0("PC2:",percentVar_agalma[2],"% variance"))
+agalma_pca <- ggplot(agalma_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19,"Palpons mature"=2,"Palpons B mature"=6,"Gonodendron male"=13,"Gonodendron female"=10,"Bract developing"= 7)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_agalma[1],"% variance")) +  ylab(paste0("PC2:",percentVar_agalma[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
 
 
 
 ```
-(ref:technical-replicate) PCA of regularized log transformed expression counts of technical replicates of two different zooids from different runs and lanes. Color indicates the run number, shape indicates the zooid, and size factor indicates number of genes sequenced.
+(ref:technical-replicate) PCA of regularized log transformed expression counts of technical replicates of two different zooids in *Frillagalma vityazi* from different runs and lanes. Color indicates the run number, shape indicates the zooid, and size factor indicates number of genes sequenced.
 
 (ref:technical-replicateshort)  PCA of regularized log transformed expression counts of technical replicates of two different zooids from different runs and lanes.
 
@@ -1528,9 +1584,9 @@ knitr::include_graphics("Figures/technical-replicate.pdf",auto_pdf = getOption("
 
 ```
 
-(ref:pca-diphyes) PCA of regularized log transformed expression counts of treatments in *Diphyes dispar*. Color indicates the replicate number, shape indicates the zooid.
+(ref:pca-diphyes) PCA of regularized log transformed expression counts of zooids/tissues in *Diphyes dispar*. Color indicates the replicate number, shape indicates the zooid.
 
-(ref:pca-diphyesshort) PCA of regularized log transformed expression counts of treatments in *Diphyes dispar*.
+(ref:pca-diphyesshort) PCA of regularized log transformed expression counts of zooids/tissues in *Diphyes dispar*.
 
 ```{r pca-diphyes, results='asis', warning=FALSE, echo=FALSE, comment=FALSE, message=FALSE, fig.width=7, fig.height=4, fig.cap= '(ref:pca-diphyes)', fig.scap='(ref:pca-diphyesshort)',fig.align='center'}
 
@@ -1538,7 +1594,7 @@ diphyes_pca
 
 ```
 
-(ref:pca-apolemia) PCA of regularized log transformed expression counts of treatments in *Apolemia lanosa*. Color indicates the replicate number, shape indicates the zooid. Single replicates are included in the PCA, but not considered in differential expression analyses.
+(ref:pca-apolemia) PCA of regularized log transformed expression counts of zooids/tissues in *Apolemia lanosa*. Color indicates the replicate number, shape indicates the zooid. 
 
 (ref:pca-apolemiashort) PCA of regularized log transformed expression counts of treatments in *Apolemia lanosa*.
 
@@ -1548,7 +1604,7 @@ apolemia_pca
 
 ```
 
-(ref:pca-agalma) PCA of regularized log transformed expression counts of treatments in *Agalma elegans*. Color indicates the replicate number, shape indicates the zooid. Single replicates are included in the PCA, but not considered in differential expression analyses.
+(ref:pca-agalma) PCA of regularized log transformed expression counts of zooids/tissues in *Agalma elegans*. Color indicates the replicate number, shape indicates the zooid. 
 
 (ref:pca-agalmashort) PCA of regularized log transformed expression counts of treatments in *Agalma elegans*.
 
@@ -1558,7 +1614,7 @@ agalma_pca
 
 ```
 
-(ref:pca-bargmannia) PCA of regularized log transformed expression counts of treatments in *Bargmannia elongata*. Color indicates the replicate number, shape indicates the zooid. Single replicates are included in the PCA, but not considered in differential expression analyses.
+(ref:pca-bargmannia) PCA of regularized log transformed expression counts of zooids/tissues in *Bargmannia elongata*. Color indicates the replicate number, shape indicates the zooid. 
 
 (ref:pca-bargmanniashort) PCA of regularized log transformed expression counts of treatments in *Bargmannia elongata*.
 
@@ -1568,7 +1624,7 @@ bargmannia_pca
 
 ```
 
-(ref:pca-Frillagalma) PCA of regularized log transformed expression counts of treatments in *Frillagalma vityazi*. Color indicates the replicate number, shape indicates the zooid. Single replicates are included in the PCA, but not considered in differential expression analyses.
+(ref:pca-Frillagalma) PCA of regularized log transformed expression counts of zooids/tissues in *Frillagalma vityazi*. Color indicates the replicate number, shape indicates the zooid. 
 
 (ref:pca-Frillagalmashort) PCA of regularized log transformed expression counts of treatments in *Frillagalma vityazi*.
 
@@ -1578,7 +1634,7 @@ frillagalma_pca
 
 ```
 
-(ref:pca-nanomia) PCA of regularized log transformed expression counts of treatments in *Nanomia bijuga*. Color indicates the replicate number, shape indicates the zooid. Single replicates are included in the PCA, but not considered in differential expression analyses.
+(ref:pca-nanomia) PCA of regularized log transformed expression counts of zooids/tissues in *Nanomia bijuga*. Color indicates the replicate number, shape indicates the zooid. 
 
 (ref:pca-nanomiashort) PCA of regularized log transformed expression counts of treatments in *Nanomia bijuga*.
 
@@ -1588,7 +1644,7 @@ nanomia_pca
 
 ```
 
-(ref:pca-physalia) PCA of regularized log transformed expression counts of treatments in *Physalia physalis*. Color indicates the replicate number, shape indicates the zooid. Single replicates are included in the PCA, but not considered in differential expression analyses.
+(ref:pca-physalia) PCA of regularized log transformed expression counts of zooids/tissues in *Physalia physalis*. Color indicates the replicate number, shape indicates the zooid. 
 
 (ref:pca-physaliashort) PCA of regularized log transformed expression counts of treatments in *Physalia physalis*.
 
@@ -1660,6 +1716,14 @@ grid.arrange(p,p1)
 ```{r variance-structure, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=6.5, fig.height=6, fig.pos='h', out.extra = '', fig.cap="Variance of change across a branch plotted against the age of the parent node. Branch ID is coded in colour, values are separated by treatment. Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.scap="Variance of change across a branch plotted against the age of the parent node.", fig.align='center'}
 
 grid.arrange(var_change_obs,legend,var_change_sim, bottom="Node age of parent", left="Variance of change",widths = c(2,0.25),layout_matrix = layout2)
+
+```
+
+(ref:fullvenom-plot) Maximum likelhood gene tree of the putative actinoporin-like toxin with all available species included. Red circles are duplication nodes and blue circles are speciation nodes.
+
+```{r fullvenom-plot, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, fig.height=15, fig.width=15, fig.cap='(ref:wnt-fullvenom)', fig.align = 'center'}
+
+venom_p
 
 ```
 
