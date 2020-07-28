@@ -585,18 +585,6 @@ tags<-dplyr::left_join(tags,Correlations,by=c("S"="S_child"))
 
 species_tree_annotated<- as.treedata(tags)
 
-Correlation_pairs<-Correlations %>% dplyr::select(-S_child) %>% names()
-Correlation_plots<-lapply(Correlation_pairs,function(pair){
-tree<-ggtree(species_tree_annotated) + ggplot2::aes_string(color=as.name(pair)) + ggplot2::scale_color_continuous(low='darkgreen', high='red') +theme(legend.position="right") +geom_tiplab() +xlim(c(0,2))
-return(tree)
-})
-
-# for(i in 1:length(Correlation_plots)){
-# pdf(paste0("Corplot",i,".pdf"))
-# print(Correlation_plots[[i]])
-# dev.off()
-# }
-
 trait<-Correlations_new 
 trait$S_child<-factor(trait$S_child, levels=species_tree_annotated@data$S)
 trait_plot<- trait %>%  filter(S_child%in%c("4","6","9","18","26","32","35"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
@@ -619,21 +607,106 @@ p11 <- ggtree(species_tree_annotated) +
 
 ###Export all of these plots to build figure
 
-#cor_plot <- ggcorr(u, label = TRUE, palette = "RdYlBu")
+```
+
+```{r covariance_sim, verbose= FALSE, include=F, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
+  edges_sim_cov<-edges_sim_original
+
+	# Only retain edges where both parent and child is a speciation event
+	edges_sim_cov %<>% dplyr::filter( (Ev_parent=="S") & (Ev_child=="S") )
+	#dim(edges_ace)
 	
-S_20<-edges_tidy_cov %>% dplyr::filter(S_child == "18") %>% .[,c(3,5)] %>% na.omit() %>% ggcorr(., label = TRUE, palette = "RdYlBu")
+	# Create an edge matrix that is in terms of phyldog node numbers rather than ape node numbers
+	phyldog_edges = S[ as.vector(phyldog_species_numbered_tree$edge) ]
+	dim(phyldog_edges) = dim( phyldog_species_numbered_tree$edge )
+	
+	# For each row in edges_ace, identify the expected parent in the species tree for S_child
+	expected_parent = phyldog_edges[ match(edges_sim_cov$S_child, phyldog_edges[,2]), 1 ]
+	
+	# Filter to retain only the edges where S_parent matches the expected parent of S_child in the species tree
+	
+	edges_sim_cov %<>% dplyr::filter( (S_parent==expected_parent) )
+	#dim(edges_ace)
+	
+	# Create a tidy data frame of changes in expression
+	edges_tidy_sim_cov = edges_sim_cov %>% dplyr::select( gene_tree, S_child, length, node_depth_child, node_age_child, node_age_parent, node_parent, node_child, terminal )
+	edges_tidy_sim_cov = cbind( edges_tidy_sim_cov, edges_sim_cov[, grepl("scaled", names(edges_sim_cov))] )
+	colnames(edges_tidy_sim_cov) = colnames(edges_tidy_sim_cov) %>% sub( "_scaled", "", .)
+	edges_tidy_sim_cov_superset<-	edges_tidy_sim_cov[,c(1:2,7:8,10:14,16:17)]
+	edges_tidy_sim_cov<-edges_tidy_sim_cov[,c(1:2,10:14,16:17)]
+  
 
-legend4<-get_legend(S_20)	
+S_children_new<-edges_tidy_sim_cov$S_child %>% unique()
 
-S_40<-edges_tidy_cov %>% dplyr::filter(S_child == "9") %>% .[,c(3,5,6,7,8)] %>% na.omit() %>% ggcorr(., label = TRUE, palette = "RdYlBu")+ guides(fill=FALSE) + ggtitle("Branch H") + theme(plot.title = element_text(hjust = 0.5))
+correlation_branches_sim<-function(child,combn){
+  correlation<-function(combn,child){
+  u<- edges_tidy_sim_cov %>% dplyr::filter(S_child == child) %>% dplyr::select(combn)
+  not_all_na <- function(x) any(!is.na(x))
+  u <- u%>% dplyr::select_if(not_all_na) %>% na.omit() 
+  if(nrow(u)>100){
+  cor_u <- cor(u)
+  return(cor_u)
+  }
+  else{
+    return(NA)
+  }
+}
+  
+combn1<-lapply(combn, correlation, child) 
+names(combn1)<- lapply(combn,short_pairs_tpm) 
+combn1<-combn1[lapply(combn1,length)>0]
+combn1<-lapply(combn1,function(x){
+  if(length(x)>1){
+  x=x[,1]
+  x=x[x!=1]
+  x<-unname(x)
+  return(x)
+  }
+})
+combn1<- combn1 %>% unlist()
+return(combn1)
+}
+	
+Correlations_sim<-lapply(S_children_new, correlation_branches_sim,pairs_tpm)
+Correlations_sim<-lapply(Correlations_sim,as.data.frame) 
+Correlations_sim<-lapply(Correlations_sim,tibble::rownames_to_column)
+for(i in 1:length(Correlations_sim)){
+  names(Correlations_sim[[i]])<-c("zooid",S_children_new[[i]])
+}
+Correlations_new_sim<-Reduce(dplyr::full_join,list(Correlations_sim[[1]],Correlations_sim[[2]],Correlations_sim[[3]],Correlations_sim[[4]],Correlations_sim[[5]],Correlations_sim[[6]],Correlations_sim[[7]],Correlations_sim[[8]],Correlations_sim[[9]],Correlations_sim[[10]],Correlations_sim[[11]],Correlations_sim[[12]]))
 
-S_55<-edges_tidy_cov %>% dplyr::filter(S_child == "26") %>% .[,c(3:9)] %>% na.omit() %>% ggcorr(., label = TRUE, palette = "RdYlBu")+ guides(fill=FALSE) + ggtitle("Branch J") + theme(plot.title = element_text(hjust = 0.5))
+rm(Correlations_sim)
 
-S_70<-edges_tidy_cov %>% dplyr::filter(S_child == "N37") %>% .[,c(4:7)] %>% na.omit() %>% ggcorr(., label = TRUE, palette = "RdYlBu")+ guides(fill=FALSE) + ggtitle("Branch E") + theme(plot.title = element_text(hjust = 0.5))
+Correlations_sim_new<-tidyr::gather(Correlations_new_sim,"S_child","Correlation",-zooid)
 
-S_79<-edges_tidy_cov %>% dplyr::filter(S_child == "32") %>% .[,c(4:7)] %>% na.omit() %>% ggcorr(., label = TRUE, palette = "RdYlBu")+ guides(fill=FALSE) + ggtitle("Branch K") + theme(plot.title = element_text(hjust = 0.5))
+Correlations_sim<-Correlations_sim_new %>% tidyr::spread(key=zooid, value=Correlation) 
 
-S_76<-edges_tidy_cov %>% dplyr::filter(S_child == "35") %>% .[,c(4:7)] %>% na.omit() %>% ggcorr(., label = TRUE, palette = "RdYlBu")+ guides(fill=FALSE) + ggtitle("Branch L") + theme(plot.title = element_text(hjust = 0.5))
+species_tree_annotated_sim<- ape::chronos( phyldog_species_numbered_tree, lambda=1, model="correlated", quiet=TRUE )
+
+tags<-species_tree_annotated_sim %>% as_tibble %>% tibble::add_column(.,S= c(S_child=node_map$S[match(node_map$species,species_tree_annotated_sim$tip.label)], species_tree_annotated_sim$node.label))
+
+tags<-dplyr::left_join(tags,Correlations_sim,by=c("S"="S_child")) 
+
+species_tree_annotated_sim<- as.treedata(tags)
+
+trait<-Correlations_sim_new 
+trait$S_child<-factor(trait$S_child, levels=species_tree_annotated_sim@data$S)
+trait_plot<- trait %>%  filter(S_child%in%c("4","6","9","18","26","32","35"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
+
+trait_plot2<- trait %>%  filter(S_child%in%c("N37"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
+
+trait_plot3<- trait %>%  filter(S_child%in%c("N23"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
+
+trait_plot4<- trait %>%  filter(S_child%in%c("N15"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
+
+trait_plot5<- trait %>%  filter(S_child%in%c("N12"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
+
+trait_plot7<- trait %>%  filter(S_child%in%c("N7"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
+
+trait_plot_all<- trait %>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
+
+
+###Export all of these plots to build figure
 
 ```
 
@@ -1208,7 +1281,7 @@ knitr::include_graphics("figures/DE_all.pdf",auto_pdf = getOption("knitr.graphic
 
 We identified genes that are significantly upregulated in particular zooids, and in the pneumatophore, for each of the sampled species. We also identified genes that are significantly upregulated in only one zooid and not in any other within a given species (Fig. \@ref(fig:dge-zooids), \@ref(fig:unique-zooids)). The list of genes that were identified as significantly differentially expressed only in a given species and zooid, and the associated transcriptome sequence ids, top blast hits, GO terms, and gene phylogeny ids, are available as supplementary data (supplementary file 1). The full list of genes upregulated in particular zooids, based on pairwise differential expression analyses, are available in supplementary file 2. 
 
-For each species and zooid, we found GO term enrichment for biological processes consistent with the functional specialization of the zooid. In gastrozooids that are solely responsible for feeding and digestion, for example, we found these zooids to be enriched for genes involved in proteolysis, chitin, glutathione and peptide catobolism, as well as metabolism of carbohydrates. Likewise for male gonodendra, we found GO term enrichment for biological processes such as sperm flagellum, mitotic cell cycle process, DNA replication. For female gonodendra, there was GO term enrichment for a number of biological processes including mitotic cell cycle process, DNA replication (in *Agalma elegans*), as well as a number of signalling pathways and developmental processes (in *Frillagalma vityazi*), likely reflecting maternal provisioning to the egg [REF].
+For each species and zooid, we found GO term enrichment for biological processes consistent with the functional specialization of the zooid. In gastrozooids that are solely responsible for feeding and digestion, for example, we found these zooids to be enriched for genes involved in proteolysis, chitin, glutathione and peptide catobolism, as well as metabolism of carbohydrates. Likewise for male gonodendra, we found GO term enrichment for biological processes such as sperm flagellum, mitotic cell cycle process, DNA replication. For female gonodendra, there was GO term enrichment for a number of biological processes including mitotic cell cycle process, DNA replication (in *Agalma elegans*), as well as a number of signalling pathways and developmental processes (in *Frillagalma vityazi*).
 
 Within the four best sampled species , we also identified `r x$short_blast_hit %>% unique() %>% length()` differentially expressed putative transcription factors (`r length(Bargmannia_TF)` out of `r y[[2]] %>% sum()` in *Bargmannia elongata*, `r length(Frillagalma_TF)` out of `r y[[4]] %>% sum` identified in *Frillagalma vityazi*, `r length(Agalma_TF)` out of `r y[[1]] %>% sum()` in *Agalma elegans* and `r length(Nanomia_TF)` out of `r y[[5]] %>% sum()` identified  in *Nanomia bijuga*). Many of these transcription factors are significantly differentially expressed in several zooids regardless of developmental stage (both mature and developing zooids), and a subset were found to be significantly differentially expressed only in particular zooids and developmental stages (\@ref(fig:transcription-factors)). 
 
@@ -1285,9 +1358,9 @@ change<-function(col_value,nhx){
   return(df)
 }
 
-plottreeexpression<-function(gene_tree,col_value){
+plottreeexpression<-function(gene_tree_value,col_value){
   
-nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==gene_tree][[1]]
+nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==gene_tree_value][[1]]
     
 edge<-change(col_value,nhx)
 
@@ -1295,7 +1368,7 @@ levels(nhx@data$Ev)<-c("D","S")
 
 tips<-pull(nhx@data,col_value)
 
-top_hit<-nhx@data$blast_hit %>% median(.,na.rm=TRUE)
+top_hit<-genes_to_tips %>% filter(gene_tree==gene_tree_value) %>% .$blast_hit
 
 p<-nhx %>% ggtree()+ geom_tiplab(aes( label=phy_node_names ), hjust=-0.1)+geom_nodepoint(aes( color=Ev )) +xlim(c(0,1))
 
@@ -1386,7 +1459,7 @@ grid.arrange(tree_reference,branch_change,sim_branch_change,leg, bottom="Branch"
 
 The distribution of expression changes along branches in gene trees that correspond to equivalent branches in the species tree are shown in figure \@ref(fig:changes). The variance structure of the empirical data matches that of the simulated data (Fig. \@ref(fig:variance-structure)), suggesting that the size of standard deviation of change around the mean that is observed in figure \@ref(fig:changes) is a function of the underlying structure of the tree and the ancestral trait reconstruction methods that were used. High variance is especially pronounced in branches in the gene tree that correspond to K and L that have a shared parent node and lead to sister taxa *Nanomia bijuga* and *Agalma elegans* (Fig. \@ref(fig:variance-structure)). These two taxa are the only sister tip values that were sampled in this study. The mean values of change along branches do, however, differ from the Brownian model (Fig. \@ref(fig:changes)). Using linear models we find that expression change along branches in gene trees that correspond to branches in the species tree can be explained by significant differences among zooids/the pneumatophore, branches, and the interaction of the two (p < 2.2e-16, p = 2.319e-13, p < 2.2e-16, respectively, two-tailed anova). The Brownian model, based on simulated values on the gene trees under BM (p=0.4438, p=0.9829, p=0.4694), and also based on random reshuffling of changes on branches (p=0.31218, p=0.06787, p=0.0.54698), show that expression change along branches in gene trees that correspond to branches in the species tree cannot be explained by significant differences among zooids/the pneumatophore, branches, and the interaction of the two. 
 
-Global patterns of expression change across all branches and tissues/zooids provides perspective on potential linage-specific shifts in expression in each zooid/tissue. These results point to a subset of branches in gene trees for particular zooids with large increases or decreases in expression across the branch. These patterns were particularly strong for palpons, where on average changes in expression were highly negative across branches leading to the clade containing *Nanomia bijuga* and *Agalma elegans*, while on average changes in expression were highly positive across branches leading to *Frillagalma vityazi*. We identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% nrow()` gene tree branches in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% .$gene_tree %>% unique() %>% length()`gene trees corresponding to branch J (branch leading to *Frillagalma vityazi*, fig \@ref(fig:changes)) with large (>10) positive changes in expression across the branch. Among these, we identified several gene families of interest that show large lineage specific increases in expression in Palpons, including genes involved in patterning and development such as Wnt receptor Frizzled-4, Wnt ligand Wnt2, and homeobox gene Otx-2. For the pneumatophore, we identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% nrow()` gene tree branches corresponding to branch J in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% .$gene_tree %>% unique() %>% length()` gene trees with large (>10) positive changes in expression across the branch, including homeobox proteins SAX-1 and Hox-B8 - the latter gene showed low or no TPM10K expression in *Nanomia bijuga*, *Agalma elegans*, and *Apolemia lanosa* pneumatophores and high expression in *Frillagalma vityazi* pneumatophores. The full list of branches and changes in expression across the branch and tissue/zooid are available in supplementary file 3. 
+Global patterns of expression change across all branches and tissues/zooids provides perspective on potential linage-specific changes in expression in each zooid/tissue. These results point to a subset of branches in gene trees for particular zooids with large increases or decreases in expression across the branch. These patterns were particularly strong for palpons, where on average changes in expression were highly negative across branches leading to the clade containing *Nanomia bijuga* and *Agalma elegans*, while on average changes in expression were highly positive across branches leading to *Frillagalma vityazi*. We identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% nrow()` gene tree branches in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% .$gene_tree %>% unique() %>% length()`gene trees corresponding to branch J (branch leading to *Frillagalma vityazi*, fig \@ref(fig:changes)) with large (>10) positive changes in expression across the branch. Among these, we identified several gene families of interest that show large lineage specific increases in expression in Palpons, including genes involved in patterning and development such as Wnt receptor Frizzled-4, Wnt ligand Wnt2, and homeobox gene Otx-2. For the pneumatophore, we identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% nrow()` gene tree branches corresponding to branch J in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% .$gene_tree %>% unique() %>% length()` gene trees with large (>10) positive changes in expression across the branch, including homeobox proteins SAX-1 and Hox-B8 - the latter gene showed low or no TPM10K expression in *Nanomia bijuga*, *Agalma elegans*, and *Apolemia lanosa* pneumatophores and high expression in *Frillagalma vityazi* pneumatophores. The full list of branches and changes in expression across the branch and tissue/zooid are available in supplementary file 3. 
 
 ```{r output_supp, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE}
 
@@ -1410,9 +1483,9 @@ readr::write_csv(new_edges, "Supplementary_Data/Supplementaryfile3.csv", na = "N
 
 ```
 
-Next, we were interested in branch level patterns of expression, focusing on whether change in expression across the same branch in a gene tree is correlated between different zooids. We investigated the co-variance structure of changes across particular branches (that correspond to species tree branches) within gene trees among different zooids/the pneumatophore (Figs. \@ref(fig:covariances)). For change across the same branch within a gene tree that corresponds to a particular branch in the species tree, there is a positive correlation between pairwise comparisons of zooids/the pneumatophore. In particular, changes across all branches are highly correlated between developing and mature gastrozooids. Changes in expression across the same branch were also highly correlated between gastrozooids and palpons, especially so across branches corresponding to branch K (\@ref(fig:changes), top panel) in the species tree (branch leading to *Agalma elegans*).  Meanwhile, changes across all branches are much less correlated between any zooid/the pneumatophore and both the male or female gonodendra. These results suggest that with the exception of male and female gonodendra, in general changes in expression across gene tree branches are highly correlated among zooids - a large positive change in expression in one zooid across a gene tree branch will also typically see a large positive change in expression in another zooid across the same branch.
+Next, we were interested in branch level patterns of expression, focusing on whether change in expression across the same branch in a gene tree is correlated between different zooids. We investigated the correlation of changes across particular branches (that correspond to species tree branches) within gene trees among different zooids/the pneumatophore (Figs. \@ref(fig:correlations)). For change across the same branch within a gene tree that corresponds to a particular branch in the species tree, there is a positive correlation between pairwise comparisons of zooids/the pneumatophore. In particular, changes across all branches are highly correlated between developing and mature gastrozooids. Changes in expression across the same branch were also highly correlated between gastrozooids and palpons, especially so across branches corresponding to branch K (\@ref(fig:changes), top panel) in the species tree (branch leading to *Agalma elegans*).  Meanwhile, changes across all branches are much less correlated between any zooid/the pneumatophore and both the male or female gonodendra. These results suggest that with the exception of male and female gonodendra, in general changes in expression across gene tree branches are highly correlated among zooids - a large positive change in expression in one zooid across a gene tree branch will also typically see a large positive change in expression in another zooid across the same branch. By contrast, in the simulated Brownian motion dataset, we found that there was no correlation of changes across branches within gene trees among any zooid/tissue.
 
-```{r covariances, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap="Siphonophore phylogeny and pairwise correlation of changes across a branch among different pairs of zooids/the pneumatophore. Correlation of changes from node to tip are shown in the plot to the right of the phylogeny. Changes between two nodes are shown adjacent to the child node. Color indicates correlation between 0.9 (red) and 0.5 (green). Treatment type is coded in colour along the x-axis, Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.align='center'}
+```{r correlations, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap="Siphonophore phylogeny and pairwise correlation of changes across a branch among different pairs of zooids/the pneumatophore. Correlation of changes from node to tip are shown in the plot to the right of the phylogeny. Changes between two nodes are shown adjacent to the child node. Color indicates correlation between 0.9 (red) and 0.5 (green). Treatment type is coded in colour along the x-axis, Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.align='center'}
 
 knitr::include_graphics("Figures/Correlations.pdf")
 
@@ -1459,19 +1532,19 @@ venom_Physalia <- e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@tpm[rownames(e$`HWI-ST625-
 
 ## Discussion {-}
 
-Colonial animals, consisting of genetically identical modules that are physically and physiologically connected, can be found across the metazoan tree of life [@hiebert2020coloniality]. Functional specialization has evolved multiple times within colonial groups, and siphonophores in particular are suggested to have the greatest diversity of functionally specialized zooids [@Beklemishev1969;@hiebert2020coloniality]. Functionally specialized siphonophore zooids have been likened to animal organs, with each functionally specialized zooid possessing distinct cell-types and performing distinct roles within the colony [@mackie1963]. While this analogy works well for understanding the function of zooids within the colony as a whole, the analogy falls short in terms of explaining the evolutionary origin and development of these biological units: functionally specialized zooids are evolutionarily homologous to free living organisms, they are multicellular, possess distinct cell types, and show regional subfunctionalization [@church2015histology;@Mackie1960;@totton1965synopsis]. While the developmental mechanisms generating zooids are very different (they arise asexually from a growth zone), the evolutionary processes acting on zooids may be similar to those acting on other modular biological units such as cell type, tissue, and organ [@hiebert2020coloniality]. Understanding the cellular and molecular processes underlying the patterning and molecular function of functionally specialized cnidarian zooids remain an open biological question, and in recent years there has been a focus in particular on differential gene expression patterns found in different functionally specialized zooids [@sanders2014differential; @sanders2015interspecific; @Siebert:2011gv]. In this study, we found a large number of genes that are differentially expressed within different siphonophore zooids, reflecting the distinct anatomy and function of these zooids. We were also able to identify potential transcription factors that are significantly differentially expressed within particular zooids, with potential homologs found in several species, which may be interesting candidates for future study in siphonophores or related cnidarian colonial groups.     
+Colonial animals, consisting of genetically identical modules that are physically and physiologically connected, can be found across the metazoan tree of life [@hiebert2020coloniality]. Functional specialization has evolved multiple times within colonial groups, and siphonophores in particular are suggested to have the greatest diversity of functionally specialized zooids [@Beklemishev1969;@hiebert2020coloniality]. Functionally specialized siphonophore zooids have been likened to animal organs, with each functionally specialized zooid possessing distinct cell-types and performing distinct roles within the colony [@mackie1963]. While this analogy works well for understanding the function of zooids within the colony as a whole, the analogy falls short in terms of explaining the evolutionary origin and development of these biological units: functionally specialized zooids are evolutionarily homologous to free living organisms, they are multicellular, possess distinct cell types, and show regional subfunctionalization [@church2015histology;@Mackie1960;@totton1965synopsis]. While the developmental mechanisms generating zooids are very different (they arise asexually from a growth zone), the evolutionary processes acting on zooids may be similar to those acting on other modular biological units such as cell type, tissue, and organ [@hiebert2020coloniality]. Understanding the cellular and molecular processes underlying the patterning and molecular function of functionally specialized cnidarian zooids remain an open biological question, and in recent years there has been a focus in particular on differential gene expression patterns found in different functionally specialized zooids [@sanders2014differential; @sanders2015interspecific; @Siebert:2011gv]. In this study, we found a large number of genes that are differentially expressed within different siphonophore zooids, reflecting the distinct anatomy and function of these zooids. We were able to identify potential transcription factors that are significantly differentially expressed within particular zooids, with potential homologs found in several species, which may be interesting candidates for future study in siphonophores or related cnidarian colonial groups.     
 
-Unique zooid types and zooid delimitation
+We were also able to explore gene expression patterns in three zooid types that are unique to three species, *Physalia physalis*, *Agalma elegans*, and *Bargmannia elongata*. In siphonophores, different zooid types are typically defined based on morphological and functional differences/similarities, and on the location of the zooid within the colony (which is determined in most species by the asexual budding process in the growth zone, which gives rise to a repeating pattern of zooids along the stem) [@dunn2005complex; @dunn2006evolution; @mackie1987siphonophore; @totton1965synopsis]. Based on both morphology and development, *Physalia physalis* tentacular palpons are considered to be a distinct and unique zooid type [@munro2019morphology], and the differential gene expression data indicate that there is a clear morphological and functional difference between gastrozooids and tentacular palpons. For "yellow" and "white" gastrozooids in *Bargmannia elongata*, the differential expression data point to few morphological or functional differences between these two zooids. Through pairwise differential expression patterns between "yellow" or "white" gastrozooids and other zooids within the colony we were able to identify hundreds of genes that are significantly differentiated in one zooid and not the other. This suggests that these two gastrozooids may be distinct zooid types, although they are functionally very similar to one another. Sequencing at greater depth, and also functional work within this species may help clarify the nature of these differences. Finally, there isn't strong evidence with these data that the B palpon and gastric palpons in *Agalma elegans* are sufficiently different to constitute a novel zooid type, and these findings suggest that location within the colony is not necessarily sufficient to designate a novel zooid type. 
 
-Evolution of gene expression
+In addition to investigating gene expression patterns between zooids within species, we were also able to use phylogenetic comparative methods to investigate gene expression patterns within homologous zooids across species. With the expansion of functional genomic tools, including RNA-seq and single cell sequencing methods, there is considerable interest in looking not only at how genomic variation gives rise to phenotypic diversity in a single species or organism, but also at how functional genomic variation shapes phenotypic diversity across a number (>2) of closely and distantly related species to understand broader evolutionary patterns and processes [@Brawand:2011du; @barbosa2012evolutionary; @breschi2016gene; @cardoso2019gene; @clarke2017evolutionary; @doi:10.1093/gbe/evw155; @merkin2012evolutionary; @necsulea2014evolution; @perry2012comparative;  @Levin:2016bp; @sudmant2015meta; @ma2018comparative; @yang2013organ; @zhang2014comparative; @10.1093/molbev/msz212]. The methods developed here are broadly applicable to a range of functional genomic data, in addition to existing RNA-seq data sets in other species.
 
-### Comparison to other methods {-}
-
-With the expansion of functional genomic tools, including RNA-seq and single cell sequencing methods, we are able to look not only at how genomic variation gives rise to phenotypic diversity in a single species or organism, but also at how functional genomic variation shapes phenotypic diversity across a number (>2) of closely and distantly related species to understand broader evolutionary patterns and processes [@Brawand:2011du; @barbosa2012evolutionary; @breschi2016gene; @clarke2017evolutionary; @doi:10.1093/gbe/evw155; @merkin2012evolutionary; @necsulea2014evolution; @perry2012comparative;  @Levin:2016bp; @sudmant2015meta; @ma2018comparative; @yang2013organ; @zhang2014comparative]. The methods developed here are broadly applicable to a range of functional genomic data, in addition to existing RNA-seq data sets in other species.
-
-This approach presents several solutions to past limitations. We apply ancestral trait reconstruction methods to reconstruct expression values at nodes in gene trees and calculate changes across branches. This has several advantages -- we are able to take species relationships into account, and we are also able to overcome sampling issues at the tips, as expression values of different treatments can be reconstructed at deep internal nodes, even where there may be inconsistent sampling at the tips. We also propose a novel solution to identifying comparable genes across species. Where past approaches identify strict orthologs *before* conducting analyses, we use information from all genes within a gene tree regardless of their evolutionary history of duplication or speciation. Subsequently, we are then able to use information at the nodes to select branches in gene trees that correspond to particular branches in the species tree. This enables the selection of branches that are descended from speciation events, but that do not necessarily belong to gene trees where only single copy genes are found. This enables us to consider vastly more genes than we would be able to with a strict ortholog approach. Additionally, we are also able to compare expression following duplication and speciation events. Finally, by using gene trees, we are able to consider expression evolution within the context of the gene phylogeny, which may differ significantly from the species phylogeny. This enables us to consider the evolution of gene expression in context, considering not only the evolutionary relationships between genes, but also between species.
+This approach presents several solutions to past limitations. We apply ancestral trait reconstruction methods to reconstruct expression values at nodes in gene trees and calculate changes across branches. This has several advantages -- we are able to take species relationships into account, and we are also able to overcome sampling issues at the tips, as expression values of different treatments can be reconstructed at deep internal nodes, even where there may be inconsistent sampling at the tips. We also propose a novel solution to identifying comparable genes across species. Where past approaches identify strict orthologs *before* conducting analyses, we use information from all genes within a gene tree regardless of their evolutionary history of duplication or speciation. Subsequently, we are then able to use information at the nodes to select branches in gene trees that correspond to particular branches in the species tree. This enables the selection of branches that are descended from speciation events, but that do not necessarily belong to gene trees where only single copy genes are found. This enables us to consider vastly more genes than we would be able to with a strict ortholog approach. Although we focus here on expression following speciation events, it is also possible to compare expression following duplication and speciation events. Finally, by using gene trees, we are able to consider expression evolution within the context of the gene phylogeny, which may differ significantly from the species phylogeny. This enables us to consider the evolution of gene expression in context, considering not only the evolutionary relationships between genes, but also between species.
 
 There are, however, limitations to this approach as applied here. As with all methods that rely on mapping to reference transcriptomes rather than genomes, this approach is limited by the quality of the reference transcriptomes. Not all reference transcriptomes were sequenced to equal depth among species, and this has important effects on the presence or absence of genes from particular species within the gene tree. This not only has an effect on the representation of expression values, but also impacts the power to investigate patterns of expression among branches within a gene tree. However, with genome sequencing becoming cheaper and more readily available, the widespread availability of reference genomes will help alleviate many of these issues. Reference genomes will also improve gene models, enabling the distinction of different alleles of the same gene from paralogous genes, this in turn will improve the quality of the gene trees. 
+
+Using this gene-tree centric approach, we were able to gain insights into general patterns of change across branches in gene trees that correspond to species tree branches. We found that most evolutionary changes across a branch in a gene tree are highly correlated among different zooids/tissues, with the exception of male and female gonodendra. We were also able to investigate the magnitude of these expression changes, and identify specific lineages and zooids with large increases (and decreases) in expression across gene tree branches. On average, gastrozooids (developing and mature), nectophores and pneumatophores show few large lineage specific changes in expression across gene tree branches. Mature palpons on average have large changes across branches, pointing to lineage specific changes in expression that are specific to this zooid. The large changes in palpon expression that we find along particular branches may be associated with lineage-specific adaptations. Unlike many other zooid types such as gastrozooids or gonophores that play a more conserved role within the colony, palpons have been observed to perform a wide range of functions in different siphonophore species. While many other zooid types such as gastrozooids or gonophores are thought to play relatively well-defined and conserved role within the colony, various functions have been ascribed to palpons in different siphonophore species. These include digestion, absorption, and egestion in *Nanomia bijuga* and *Forskalia* [@mackie1963fishing], and also defense in *Physophora hydrostatica* [@totton1965synopsis]. This latter case is particularly striking -- the palpons of *Physophora hydrostatica* vigorously attack objects placed in their vicinity [@totton1965synopsis]. The lack of knowledge about morphological traits specific to palpons and the sense that they don't have a consistent narrow function can give the sense that they are not as interesting as other zooids. The expression results presented here suggest that palpons should be viewed in a very different light -- they may have greater functional diversity than previously thought and are more fundamental to siphonophore biology than has been appreciated. 
+
+Summary statistics provide a perspective of the dominant behaviour of a subset of branches within a subset of gene trees, however each gene has a unique evolutionary history as reflected in the gene tree. Using this method, we are able to focus in at the branch level to identify genes and clades of genes whose expression vary little among species for a given zooid, as well as instances of large lineage specific changes. Each gene tree is a rich resource of information of expression changes across the branches in the tree, and by focusing at a gene tree level, researchers can use these tools to understand the degree to which expression patterns of a given gene in a species may be extrapolated to another, or as an exploratory tool to identify expression patterns that may be species and possibly also zooid/tissue specific.   
 
 ## Methods {-}
 
