@@ -6,4 +6,4 @@
 
 module load IQ-TREE
 
-/home/cm2477/project/OrthoFinder/orthofinder -f /home/cm2477/scratch60/siphonophore2016/OrthoFinder/sequences -t 16 -s /home/cm2477/scratch60/siphonophore2016/OrthoFinder/speciestree.trees -M msa -T iqtree 
+/home/cm2477/project/OrthoFinder/orthofinder -f /home/cm2477/scratch60/siphonophore2016/OrthoFinder/sequences -t 16 -s /home/cm2477/scratch60/siphonophore2016/OrthoFinder/speciestree.tree -M msa -T iqtree 
