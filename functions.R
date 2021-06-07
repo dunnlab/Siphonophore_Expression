@@ -1,4 +1,4 @@
-QCplot <- function(object) {
+  QCplot <- function(object) {
 
 	#plot of counts. Note that these are raw, not normalized counts. 
   Dmds<-tibble(
@@ -529,7 +529,6 @@ tpmtreat<-function(object){
   return(y)
 }
 
-#subset and bind tpm results. This code could do with improvement. 
 
 sort_tpm<-function(object){
   m<-list()
@@ -761,6 +760,10 @@ summarize_ace_edges = function ( nhx, default_length_val=NA ) {
     Bradev_parent= tags$Bradev[parents] ,
     Gonmal_parent= tags$Gonmal[parents] ,
     Gonfem_parent= tags$Gonfem[parents] ,
+    PalmatGasmat_parent=(tags$Palmat[parents]+1)/(tags$Gasmat[parents]+1) ,
+    GasdevGasmat_parent=(tags$Gasdev[parents]+1)/(tags$Gasmat[parents]+1) ,
+    NecdevGasmat_parent=(tags$Necdev[parents]+1)/(tags$Gasmat[parents]+1) ,
+    PneGasmat_parent=(tags$Pne[parents]+1)/(tags$Gasmat[parents]+1) ,
     tau_parent=tags$tau[parents],
     Ev_child = tags$Ev[children],
     S_child  = tags$S[children] ,
@@ -776,6 +779,10 @@ summarize_ace_edges = function ( nhx, default_length_val=NA ) {
     Bradev_child= tags$Bradev[children] ,
     Gonmal_child= tags$Gonmal[children] ,
     Gonfem_child= tags$Gonfem[children] ,
+    PalmatGasmat_child=(tags$Palmat[children]+1)/(tags$Gasmat[children]+1) ,
+    GasdevGasmat_child=(tags$Gasdev[children]+1)/(tags$Gasmat[children]+1) ,
+    NecdevGasmat_child=(tags$Necdev[children]+1)/(tags$Gasmat[children]+1) ,
+    PneGasmat_child=(tags$Pne[children]+1)/(tags$Gasmat[children]+1) ,
     tau_child=tags$tau[children],
     Gasdev_scaled=(tags$Gasdev[children] -tags$Gasdev[parents] )/edge_length,
     Palmat_scaled=(tags$Palmat[children] -tags$Palmat[parents] )/edge_length,
@@ -785,6 +792,10 @@ summarize_ace_edges = function ( nhx, default_length_val=NA ) {
     Bradev_scaled=(tags$Bradev[children] -tags$Bradev[parents] )/edge_length,
     Gonmal_scaled=(tags$Gonmal[children] -tags$Gonmal[parents] )/edge_length,
     Gonfem_scaled=(tags$Gonfem[children] -tags$Gonfem[parents] )/edge_length,
+    PalmatGasmat_scaled = ( ((tags$Palmat[children]+1)/(tags$Gasmat[children]+1)) - ((tags$Palmat[parents]+1)/(tags$Gasmat[parents]+1)) )/edge_length ,
+    GasdevGasmat_scaled = ( ((tags$Gasdev[children]+1)/(tags$Gasmat[children]+1)) - ((tags$Gasdev[parents]+1)/(tags$Gasmat[parents]+1)) )/edge_length ,
+    NecdevGasmat_scaled = ( ((tags$Necdev[children]+1)/(tags$Gasmat[children]+1)) - ((tags$Necdev[parents]+1)/(tags$Gasmat[parents]+1)) )/edge_length  ,
+    PneGasmat_scaled = ( ((tags$Pne[children]+1)/(tags$Gasmat[children]+1)) - ((tags$Pne[parents]+1)/(tags$Gasmat[parents]+1)) )/edge_length ,
     tau_scaled=(tags$tau[children]-tags$tau[parents])/edge_length,
     terminal = terminal,
     default_length = FALSE,

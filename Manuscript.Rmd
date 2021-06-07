@@ -5,6 +5,7 @@ site: "bookdown::bookdown_site"
 output:
   bookdown::pdf_document2:
     toc: FALSE
+    fig_caption: yes
 ---
 
 ```{r preliminary-setup, include=FALSE}
@@ -55,6 +56,9 @@ output:
   library(ggrepel)
   library(gtools)
 
+
+rm(list = ls())
+
   	## The minimum number of counts to pass gene sampling criteria
 	min_count <- 1 
 	
@@ -103,18 +107,6 @@ output:
 	source( "functions.R" )
 ```
 
-```{r summarize-trees, verbose= FALSE, include=F, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
-gene_tree_summary<-list()
-
-#loop the summary over all of the col values of interest
-for(i in 1:length(focal_tpm_values)){
-gene_tree_summary[[i]]<-summarize_trees(gene_trees_ace_calibrated_pruned,focal_tpm_values[i])
-}
-
-#put all of the rows together
-gene_tree_summary<-gene_tree_summary %>% dplyr::bind_rows() %>% arrange(gene)
-
-```
 
 ```{r blast by gene_tree,verbose= FALSE, include=F, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
 #this gives you gene trees with the top blast hit for that gene tree
@@ -199,13 +191,13 @@ S_new<-data.frame( S_new=c("F","G","H","I","J","K","L","X","A","B","C","D","E" )
 	edges_tidy = edges_ace %>% dplyr::select( gene_tree, S_child, length, node_depth_child, node_age_child, node_age_parent, node_parent, node_child, terminal )
 	edges_tidy = cbind( edges_tidy, edges_ace[, grepl("scaled", names(edges_ace))] )
 	colnames(edges_tidy) = colnames(edges_tidy) %>% sub( "_scaled", "", .)
-	edges_tidy %<>% tidyr::gather( names(edges_tidy)[10:18], key = "treatment", value = "change" )
+	edges_tidy %<>% tidyr::gather( names(edges_tidy)[10:21], key = "treatment", value = "change" )
 	
 	# Change child node to factor
 	edges_tidy %<>% dplyr::mutate( S_child = as.factor(S_child) )
 	
 	# Remove tau for now since it is on a different scale
-	edges_tidy %<>% filter(treatment != "tau")
+	edges_tidy<-edges_tidy %>% select(-tau)
 	
 	# Remove rows with missing values
 	edges_tidy %<>% na.omit()
@@ -219,6 +211,14 @@ S_new<-data.frame( S_new=c("F","G","H","I","J","K","L","X","A","B","C","D","E" )
 	#remove zooid values from branches where there shouldn't be any (due to topological issues)
 	
 	edges_tidy<-edges_tidy %>% group_by(S_child,treatment) %>% filter(n()>300) %>% ungroup()
+	
+	#add child values
+	
+	child<-edges_ace %>% select(gene_tree, node_parent, node_child, PalmatGasmat_child, GasdevGasmat_child, NecdevGasmat_child, PneGasmat_child)
+
+  edges_tidy<- edges_tidy %>% left_join(child)
+  
+  edges_tidy<- edges_tidy %>% left_join(S_new, by=c("S_child"="S"))
 	
 ```
 
@@ -257,13 +257,13 @@ genes_to_tips_sim =
 	edges_sim_tidy = edges_sim %>% dplyr::select( gene_tree, S_child, length, node_depth_child, node_age_child, node_age_parent, node_parent, node_child, terminal )
 	edges_sim_tidy = cbind( edges_sim_tidy, edges_sim[, grepl("scaled", names(edges_sim))] )
 	colnames(edges_sim_tidy) = colnames(edges_sim_tidy) %>% sub( "_scaled", "", .)
-	edges_sim_tidy %<>% tidyr::gather( names(edges_sim_tidy)[10:18], key = "treatment", value = "change" )
+	edges_sim_tidy %<>% tidyr::gather( names(edges_sim_tidy)[10:21], key = "treatment", value = "change" )
 	
 	# Change child node to factor
 	edges_sim_tidy %<>% dplyr::mutate( S_child = as.factor(S_child) )
 	
 	# Remove tau for now since it is on a different scale
-	edges_sim_tidy %<>% dplyr::filter(treatment != "tau")
+  edges_sim_tidy<-edges_sim_tidy %>% select(-tau)
 	
 	# Remove rows with missing values
 	edges_sim_tidy %<>% na.omit()
@@ -381,59 +381,10 @@ genes_to_tips =
 
 edges_tidy_original<-edges_tidy
 edges_sim_tidy_original<-edges_sim_tidy
-edges_tidy <- edges_tidy[!edges_tidy$treatment=="Bradev",]
-edges_sim_tidy <- edges_sim_tidy[!edges_sim_tidy$treatment=="Bradev",]
 
-gene_trees_sim_digests<-unlist(lapply(gene_trees_sim_calibrated_pruned, digest))
+Sum_sim= edges_sim_tidy %>% filter(treatment %in% c("PalmatGasmat","GasdevGasmat","NecdevGasmat","PneGasmat")) %>% dplyr::select(change,gene_tree,S_child,treatment) %>% Summarize(change ~ S_child*treatment,  data=.,digits=3)
 
-change_deciles<-quantile(edges_tidy$change,probs= seq(0, 1, by= 0.1))
-
-linear_model<- edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lm(change~S_child*treatment,data=.)
-g_linear_model<- edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% glm(change~S_child*treatment,data=.)
-lm_mixed<- edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lmer(change~S_child*treatment+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE))
-lm_mixed_S_null<-edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lmer(change~S_child+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE), REML=FALSE)
-lm_mixed_null<-edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lmer(change~treatment+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE), REML=FALSE)
-lm_mixed_interact_null<-edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lmer(change~S_child+treatment+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE),REML=FALSE)
-
-#check simulated data
-
-linear_modelsim<-edges_sim_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lm(change~S_child*treatment,data=.)
-linear_mixed_modelsim<-edges_sim_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>%lmer(change~S_child*treatment+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE))
-lm_mixed_modelsim_S_null<-edges_sim_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lmer(change~S_child+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE), REML=FALSE)
-lm_mixed_modelsim_null<-edges_sim_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lmer(change~treatment+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE), REML=FALSE)
-lm_mixed_modelsim_interact_null<-edges_sim_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% lmer(change~S_child+treatment+(1|gene_tree),data=., control = lmerControl(calc.derivs = FALSE),REML=FALSE)
-
-anova_linear_sim<-anova(linear_modelsim)
-
-#try shuffling values along the branch
-xshuffle<-edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% transform(.,change=sample(change))
-linear_modelshuffle<-lm(change~S_child*treatment,data=xshuffle)
-linear_mixed_modelshuffle<-lmer(change~S_child*treatment+(1|gene_tree),data=xshuffle, control = lmerControl(calc.derivs = FALSE))
-linear_mixed_modelshuffle_S_null<-lmer(change~S_child+(1|gene_tree),data=xshuffle, control = lmerControl(calc.derivs = FALSE), REML=FALSE)
-linear_mixed_modelshuffle_null<-lmer(change~treatment+(1|gene_tree),data=xshuffle, control = lmerControl(calc.derivs = FALSE), REML=FALSE)
-linear_mixed_modelshuffle_interact_null<-lmer(change~S_child+treatment+(1|gene_tree),data=xshuffle, control = lmerControl(calc.derivs = FALSE),REML=FALSE)
-anova_linear_modelshuffle<- anova(linear_modelshuffle)
-
-#check if largest changes have an effect, they do not.
-#x1<- edges_tidy %>% filter(change>change_deciles[2] & change<change_deciles[10]) %>% dplyr::select(change,gene_tree,S_child,treatment)
-#x3<-lm(change~S_child*treatment,data=x1)
-
-anovalm<-anova(linear_model)
-#anova(x3)
-#S_child, treatment and S_child:treatment are all significant
-
-S_child_marginal<- emmeans(linear_model, pairwise ~ S_child | treatment) 
-
-#cld(treatment_marginal,
-#alpha=0.05,
-#Letters=letters,
-#adjust="tukey")
-
-Sum_shuffle = Summarize(change ~ S_child*treatment,  data=xshuffle,digits=3)
-
-Sum_sim= edges_sim_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% Summarize(change ~ S_child*treatment,  data=.,digits=3)
-
-Sum = edges_tidy %>% dplyr::select(change,gene_tree,S_child,treatment) %>% Summarize(change ~ S_child*treatment,  data=.,digits=3)
+Sum = edges_tidy %>% filter(treatment %in% c("PalmatGasmat","GasdevGasmat","NecdevGasmat","PneGasmat")) %>% dplyr::select(change,gene_tree,S_child,treatment) %>% Summarize(change ~ S_child*treatment,  data=.,digits=3)
 
 #add more memorable branch names with letters
 Sum = data.frame(S_new = S_new$S_new[match(Sum$S_child, S_new$S)], S_child=Sum$S_child) %>% dplyr::bind_cols(Sum, .)
@@ -451,7 +402,7 @@ branch_change<- ggplot(Sum, aes(x = S_new,
     geom_point(shape=15, size=4, position=pd) +
     theme_bw() +
     theme(axis.title = element_text(face = "plain", size=12)) +
-    ylab("Mean change along branch") + xlab("") + ggtitle("Empirical") +theme(plot.title = element_text(hjust = 0.5)) +ylim(c(-15,15)) + scale_color_manual(values=c("#F9B326","#F97F06","#BC98D3","#F4A6AE","#AEC64A","#F7D114","#7ECBE0"))
+    ylab("Mean change along branch") + xlab("") + ggtitle("Empirical") +theme(plot.title = element_text(hjust = 0.5)) +ylim(c(-8,8)) + scale_color_manual(values=c("#F9B326","#AEC64A","#F7D114","#7ECBE0"))
 
 leg<- get_legend(branch_change) 
 
@@ -466,7 +417,7 @@ sim_branch_change<- ggplot(Sum_sim, aes(x = S_new,
     geom_point(shape=15, size=4, position=pd) +
     theme_bw() +
     theme(axis.title = element_text(face = "plain", size=12)) +
-    ylab("") + ggtitle("Simulated") + xlab("") + guides(color=FALSE) + theme(plot.title = element_text(hjust = 0.5)) +ylim(c(-15,15)) + scale_color_manual(values=c("#F9B326","#F97F06","#BC98D3","#F4A6AE","#AEC64A","#F7D114","#7ECBE0"))
+    ylab("") + ggtitle("Simulated") + xlab("") + guides(color=FALSE) + theme(plot.title = element_text(hjust = 0.5)) +ylim(c(-8,8)) + scale_color_manual(values=c("#F9B326","#AEC64A","#F7D114","#7ECBE0"))
 
 tree_reference<- ggtree(phyldog_species_numbered_tree, branch.length="none") + geom_tiplab(aes(label=label), fontface='italic')+xlim(-6,15) +geom_label(aes(x=branch,label=S_new$S_new), size=2, label.size = 0.1)
 
@@ -477,7 +428,7 @@ change_figure<- grid.arrange(tree_reference,branch_change,sim_branch_change,leg,
 
 #the vast majority of branches show small or no change in expression along a branch - conversely, a handful of gene trees show large changes along a branch
 
-var_change_obs_data<-edges_tidy %>% group_by(S_child,treatment) %>% summarise(mean_abs_change=mean(change_abs), var_abs_change=var(change_abs),mean_change=mean(change),var_change=var(change),node_age_parent=node_age_parent[1])
+var_change_obs_data<-edges_tidy %>% filter(treatment %in% c("PalmatGasmat","GasdevGasmat","NecdevGasmat","PneGasmat")) %>% group_by(S_child,treatment) %>% summarise(mean_abs_change=mean(change_abs), var_abs_change=var(change_abs),mean_change=mean(change),var_change=var(change),node_age_parent=node_age_parent[1])
 
 ##add human readable branch data
 var_change_obs_data<-data.frame(S_new = S_new$S_new[match(var_change_obs_data$S_child, S_new$S)], S_child=var_change_obs_data$S_child) %>% bind_cols(var_change_obs_data, .)
@@ -488,252 +439,133 @@ legend<- get_legend(var_change_obs)
 
 var_change_obs<-var_change_obs + guides(color=FALSE)
 
-#For all treatments, mean abs change is a function of the node_age of the parent - with greater mean abs change the younger the node age of the parent.  
-
-var_change_sim_data<- edges_sim_tidy %>% group_by(S_child,treatment) %>% summarise(mean_abs_change=mean(change_abs), var_abs_change=var(change_abs),mean_change=mean(change),var_change=var(change),node_age_parent=node_age_parent[1])
+var_change_sim_data<- edges_sim_tidy %>% filter(treatment %in% c("PalmatGasmat","GasdevGasmat","NecdevGasmat","PneGasmat")) %>% group_by(S_child,treatment) %>% summarise(mean_abs_change=mean(change_abs), var_abs_change=var(change_abs),mean_change=mean(change),var_change=var(change),node_age_parent=node_age_parent[1])
   
 ##add human readable branch data
 var_change_sim_data<-data.frame(S_new = S_new$S_new[match(var_change_sim_data$S_child, S_new$S)], S_child=var_change_sim_data$S_child) %>% bind_cols(var_change_sim_data, .)
     
 var_change_sim<-var_change_sim_data %>% ggplot()+geom_point(aes(node_age_parent,var_abs_change,col=S_new)) + facet_wrap(~treatment) + xlab(" ") + ylab(" ")+ggtitle(label="Simulated") + theme(plot.title = element_text(hjust = 0.5))+ guides(color=FALSE)
 
-#this pattern holds with simulated values, suggesting that variance is driven by the internal structure of the tree
-
 layout2<-rbind(c(1,2),c(3,2))
 
-```
 
-```{r covariance, verbose= FALSE, include=F, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
-  edges_cov<-edges_ace_original
 
-	# Only retain edges where both parent and child is a speciation event
-	edges_cov %<>% dplyr::filter( (Ev_parent=="S") & (Ev_child=="S") )
-	#dim(edges_ace)
-	
-	# Create an edge matrix that is in terms of phyldog node numbers rather than ape node numbers
-	phyldog_edges = S[ as.vector(phyldog_species_numbered_tree$edge) ]
-	dim(phyldog_edges) = dim( phyldog_species_numbered_tree$edge )
-	
-	# For each row in edges_ace, identify the expected parent in the species tree for S_child
-	expected_parent = phyldog_edges[ match(edges_cov$S_child, phyldog_edges[,2]), 1 ]
-	
-	# Filter to retain only the edges where S_parent matches the expected parent of S_child in the species tree
-	
-	edges_cov %<>% dplyr::filter( (S_parent==expected_parent) )
-	#dim(edges_ace)
-	
-	# Create a tidy data frame of changes in expression
-	edges_tidy_cov = edges_cov %>% dplyr::select( gene_tree, S_child, length, node_depth_child, node_age_child, node_age_parent, node_parent, node_child, terminal )
-	edges_tidy_cov = cbind( edges_tidy_cov, edges_cov[, grepl("scaled", names(edges_cov))] )
-	colnames(edges_tidy_cov) = colnames(edges_tidy_cov) %>% sub( "_scaled", "", .)
-	edges_tidy_cov_superset<-	edges_tidy_cov[,c(1:2,7:8,10:14,16:17)]
-	edges_tidy_cov<-edges_tidy_cov[,c(1:2,10:14,16:17)]
-	#edges_tidy_cov<-edges_tidy_cov %>% filter(S_child %in% c("9","26","N37","35","N37"))
+### now look at change data w/o ratios
 
-correlation_branches<-function(child,combn){
-  correlation<-function(combn,child){
-  u<- edges_tidy_cov %>% dplyr::filter(S_child == child) %>% dplyr::select(combn)
-  not_all_na <- function(x) any(!is.na(x))
-  u <- u%>% dplyr::select_if(not_all_na) %>% na.omit() 
-  if(nrow(u)>100){
-  cor_u <- cor(u)
-  return(cor_u)
-  }
-  else{
-    return(NA)
-  }
-}
+Sum_sim2= edges_sim_tidy %>% filter(treatment %in% c("Palmat", "Gasmat", "Gasdev","Necdev","Pne")) %>% dplyr::select(change,gene_tree,S_child,treatment) %>% Summarize(change ~ S_child*treatment,  data=.,digits=3)
+
+Sum2 = edges_tidy %>% filter(treatment %in% c("Palmat", "Gasmat", "Gasdev","Necdev","Pne")) %>% dplyr::select(change,gene_tree,S_child,treatment) %>% Summarize(change ~ S_child*treatment,  data=.,digits=3)
+
+#add more memorable branch names with letters
+Sum2 = data.frame(S_new = S_new$S_new[match(Sum2$S_child, S_new$S)], S_child=Sum2$S_child) %>% dplyr::bind_cols(Sum2, .)
+
+Sum_sim2 = data.frame(S_new = S_new$S_new[match(Sum_sim2$S_child, S_new$S)], S_child=Sum_sim2$S_child) %>% dplyr::bind_cols(Sum_sim2, .)
+
+pd = position_dodge(.2)
+
+branch_change2<- ggplot(Sum2, aes(x = S_new,
+                y = mean,
+                color = treatment)) +
+    geom_errorbar(aes(ymin = mean - sd,
+                      ymax = mean + sd),
+                   width=.2, size=0.7, position=pd) +
+    geom_point(shape=15, size=4, position=pd) +
+    theme_bw() +
+    theme(axis.title = element_text(face = "plain", size=12)) +
+    ylab("Mean change along branch") + xlab("") + ggtitle("Empirical") +theme(plot.title = element_text(hjust = 0.5)) +ylim(c(-18,18)) + scale_color_manual(values=c("#F9B326","#F9C153","#AEC64A","#F7D114","#7ECBE0"))
+
+leg2<- get_legend(branch_change2) 
+
+branch_change2<-branch_change2 + guides(color=FALSE)
+
+sim_branch_change2<- ggplot(Sum_sim2, aes(x = S_new,
+                y = mean,
+                color = treatment)) +
+    geom_errorbar(aes(ymin = mean - sd,
+                      ymax = mean + sd),
+                   width=.2, size=0.7, position=pd) +
+    geom_point(shape=15, size=4, position=pd) +
+    theme_bw() +
+    theme(axis.title = element_text(face = "plain", size=12)) +
+    ylab("") + ggtitle("Simulated") + xlab("") + guides(color=FALSE) + theme(plot.title = element_text(hjust = 0.5)) +ylim(c(-18,18)) + scale_color_manual(values=c("#F9B326","#F9C153","#AEC64A","#F7D114","#7ECBE0"))
+
+tree_reference<- ggtree(phyldog_species_numbered_tree, branch.length="none") + geom_tiplab(aes(label=label), fontface='italic')+xlim(-6,15) +geom_label(aes(x=branch,label=S_new$S_new), size=2, label.size = 0.1)
+
+layout<-rbind(c(1,1,NA),c(2,3,4))
+
+change_figure2<- grid.arrange(tree_reference,branch_change2,sim_branch_change2,leg2, bottom="Branch",widths = c(2,2,0.5),layout_matrix = layout)
+
+var_change_obs_data_noratio<-edges_tidy %>% filter(treatment %in% c("Palmat","Gasdev","Necdev","Pne","Gasmat","Gonmal","Gonfem")) %>% group_by(S_child,treatment) %>% summarise(mean_abs_change=mean(change_abs), var_abs_change=var(change_abs),mean_change=mean(change),var_change=var(change),node_age_parent=node_age_parent[1])
+
+##add human readable branch data
+var_change_obs_data_noratio<-data.frame(S_new = S_new$S_new[match(var_change_obs_data_noratio$S_child, S_new$S)], S_child=var_change_obs_data_noratio$S_child) %>% bind_cols(var_change_obs_data_noratio, .)
+
+var_change_obs_noratio<-var_change_obs_data_noratio %>% ggplot()+geom_point(aes(node_age_parent,var_abs_change,col=S_new)) + facet_wrap(~treatment) + xlab(" ") + ylab("")+ggtitle(label="Empirical") + theme(plot.title = element_text(hjust = 0.5))+ guides(col=guide_legend(title="Branch"))
+
+legend2<- get_legend(var_change_obs_noratio) 
+
+var_change_obs_noratio<-var_change_obs_noratio + guides(color=FALSE)
+
+
+var_change_sim_data_noratio<- edges_sim_tidy %>% filter(treatment %in% c("Palmat","Gasdev","Necdev","Pne","Gasmat","Gonmal","Gonfem")) %>% group_by(S_child,treatment) %>% summarise(mean_abs_change=mean(change_abs), var_abs_change=var(change_abs),mean_change=mean(change),var_change=var(change),node_age_parent=node_age_parent[1])
   
-combn1<-lapply(combn, correlation, child) 
-names(combn1)<- lapply(combn,short_pairs_tpm) 
-combn1<-combn1[lapply(combn1,length)>0]
-combn1<-lapply(combn1,function(x){
-  if(length(x)>1){
-  x=x[,1]
-  x=x[x!=1]
-  x<-unname(x)
-  return(x)
-  }
-})
-combn1<- combn1 %>% unlist()
-return(combn1)
-}
+##add human readable branch data
+var_change_sim_data_noratio<-data.frame(S_new = S_new$S_new[match(var_change_sim_data_noratio$S_child, S_new$S)], S_child=var_change_sim_data_noratio$S_child) %>% bind_cols(var_change_sim_data_noratio, .)
+    
+var_change_sim_noratio<-var_change_sim_data_noratio %>% ggplot()+geom_point(aes(node_age_parent,var_abs_change,col=S_new)) + facet_wrap(~treatment) + xlab(" ") + ylab(" ")+ggtitle(label="Simulated") + theme(plot.title = element_text(hjust = 0.5))+ guides(color=FALSE)
 
-focal_tpm_values<- focal_tpm_values[focal_tpm_values!="Bradev"]
-pairs_tpm<-combn(focal_tpm_values,2, simplify=FALSE)
-S_children<-edges_tidy_cov$S_child %>% unique()
-	
-Correlations<-lapply(S_children, correlation_branches,pairs_tpm)
-Correlations<-lapply(Correlations,as.data.frame) 
-Correlations<-lapply(Correlations,tibble::rownames_to_column)
-for(i in 1:length(Correlations)){
-  names(Correlations[[i]])<-c("zooid",S_children[[i]])
-}
-Correlations_new<-Reduce(dplyr::full_join,list(Correlations[[1]],Correlations[[2]],Correlations[[3]],Correlations[[4]],Correlations[[5]],Correlations[[6]],Correlations[[7]],Correlations[[8]],Correlations[[9]],Correlations[[10]],Correlations[[11]],Correlations[[12]]))
+layout3<-rbind(c(1,2),c(3,2))
 
-rm(Correlations)
+var_change_plot<- grid.arrange(var_change_obs_noratio,legend2,var_change_sim_noratio, bottom="Node age of parent", left="Variance of change",widths = c(2,0.25),layout_matrix = layout3)
 
-Correlations_new<-tidyr::gather(Correlations_new,"S_child","Correlation",-zooid)
+###
 
-Correlations<-Correlations_new %>% tidyr::spread(key=zooid, value=Correlation) 
+edges_tidy_directional <- edges_tidy %>% filter(treatment%in%c("GasdevGasmat", "PneGasmat", "NecdevGasmat", "PalmatGasmat")) %>% mutate(change_direction= case_when(change<2 & change >-2 ~ paste0("Neutral"), change>=2 ~ paste0("Positive"), change<=-2 ~ paste0("Negative"))) %>% select(gene_tree, S_child, S_new, change, treatment, change_direction, blast_hit)
 
-species_tree_annotated<- ape::chronos( phyldog_species_numbered_tree, lambda=1, model="correlated", quiet=TRUE )
+child2<-edges_ace %>% select(gene_tree, node_parent, node_child, ND_parent, ND_child)
 
-tags<-species_tree_annotated %>% as_tibble %>% tibble::add_column(.,S= c(S_child=node_map$S[match(node_map$species,species_tree_annotated$tip.label)], species_tree_annotated$node.label))
+edges_tidy_directional_export <- edges_tidy %>% filter(treatment%in%c("GasdevGasmat", "PneGasmat", "NecdevGasmat", "PalmatGasmat")) %>% mutate(change_direction= case_when(change<2 & change >-2 ~ paste0("Neutral"), change>=2 ~ paste0("Positive"), change<=-2 ~ paste0("Negative"))) %>% left_join(child2) %>%  select(gene_tree, S_child, node_parent, node_child, ND_parent, ND_child, S_new, change, treatment, change_direction, blast_hit)
 
-tags<-dplyr::left_join(tags,Correlations,by=c("S"="S_child")) 
+readr::write_csv(edges_tidy_directional_export, "Supplementary_Data/Supplementaryfile6.csv", na = "NA") 
 
-species_tree_annotated<- as.treedata(tags)
+#output trees - to be re run for any/all re-runs of prep files
 
-trait<-Correlations_new 
-trait$S_child<-factor(trait$S_child, levels=species_tree_annotated@data$S)
-trait_plot<- trait %>%  filter(S_child%in%c("4","6","9","18","26","32","35"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-trait_plot2<- trait %>%  filter(S_child%in%c("N37"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-trait_plot3<- trait %>%  filter(S_child%in%c("N23"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-trait_plot4<- trait %>%  filter(S_child%in%c("N15"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-trait_plot5<- trait %>%  filter(S_child%in%c("N12"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-trait_plot7<- trait %>%  filter(S_child%in%c("N7"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-trait_plot_all<- trait %>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-p11 <- ggtree(species_tree_annotated) +
-  xlim(0,3) +
-  geom_tiplab()
-
-###Export all of these plots to build figure
+ # for(tree in 1:length(gene_trees_ace_calibrated_pruned)){
+ # if(!is.na(gene_trees_ace_calibrated_pruned[[tree]])){
+ # ape::write.tree(gene_trees_ace_calibrated_pruned[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees_pruned/",gene_trees_ace_digests[[tree]],".txt"))
+ # }
+ # }
+ # 
+ # for(tree in 1:length(gene_trees_ace_calibrated)){
+ # if(!is.na(gene_trees_ace_calibrated[[tree]])){
+ # ape::write.tree(gene_trees_ace_calibrated[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees/",gene_trees_ace_digests[[tree]],".txt"))
+ # }
+ # }
 
 ```
 
-```{r covariance_sim, verbose= FALSE, include=F, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
-  edges_sim_cov<-edges_sim_original
 
-	# Only retain edges where both parent and child is a speciation event
-	edges_sim_cov %<>% dplyr::filter( (Ev_parent=="S") & (Ev_child=="S") )
-	#dim(edges_ace)
-	
-	# Create an edge matrix that is in terms of phyldog node numbers rather than ape node numbers
-	phyldog_edges = S[ as.vector(phyldog_species_numbered_tree$edge) ]
-	dim(phyldog_edges) = dim( phyldog_species_numbered_tree$edge )
-	
-	# For each row in edges_ace, identify the expected parent in the species tree for S_child
-	expected_parent = phyldog_edges[ match(edges_sim_cov$S_child, phyldog_edges[,2]), 1 ]
-	
-	# Filter to retain only the edges where S_parent matches the expected parent of S_child in the species tree
-	
-	edges_sim_cov %<>% dplyr::filter( (S_parent==expected_parent) )
-	#dim(edges_ace)
-	
-	# Create a tidy data frame of changes in expression
-	edges_tidy_sim_cov = edges_sim_cov %>% dplyr::select( gene_tree, S_child, length, node_depth_child, node_age_child, node_age_parent, node_parent, node_child, terminal )
-	edges_tidy_sim_cov = cbind( edges_tidy_sim_cov, edges_sim_cov[, grepl("scaled", names(edges_sim_cov))] )
-	colnames(edges_tidy_sim_cov) = colnames(edges_tidy_sim_cov) %>% sub( "_scaled", "", .)
-	edges_tidy_sim_cov_superset<-	edges_tidy_sim_cov[,c(1:2,7:8,10:14,16:17)]
-	edges_tidy_sim_cov<-edges_tidy_sim_cov[,c(1:2,10:14,16:17)]
-  
-
-S_children_new<-edges_tidy_sim_cov$S_child %>% unique()
-
-correlation_branches_sim<-function(child,combn){
-  correlation<-function(combn,child){
-  u<- edges_tidy_sim_cov %>% dplyr::filter(S_child == child) %>% dplyr::select(combn)
-  not_all_na <- function(x) any(!is.na(x))
-  u <- u%>% dplyr::select_if(not_all_na) %>% na.omit() 
-  if(nrow(u)>100){
-  cor_u <- cor(u)
-  return(cor_u)
-  }
-  else{
-    return(NA)
-  }
-}
-  
-combn1<-lapply(combn, correlation, child) 
-names(combn1)<- lapply(combn,short_pairs_tpm) 
-combn1<-combn1[lapply(combn1,length)>0]
-combn1<-lapply(combn1,function(x){
-  if(length(x)>1){
-  x=x[,1]
-  x=x[x!=1]
-  x<-unname(x)
-  return(x)
-  }
-})
-combn1<- combn1 %>% unlist()
-return(combn1)
-}
-	
-Correlations_sim<-lapply(S_children_new, correlation_branches_sim,pairs_tpm)
-Correlations_sim<-lapply(Correlations_sim,as.data.frame) 
-Correlations_sim<-lapply(Correlations_sim,tibble::rownames_to_column)
-for(i in 1:length(Correlations_sim)){
-  names(Correlations_sim[[i]])<-c("zooid",S_children_new[[i]])
-}
-Correlations_new_sim<-Reduce(dplyr::full_join,list(Correlations_sim[[1]],Correlations_sim[[2]],Correlations_sim[[3]],Correlations_sim[[4]],Correlations_sim[[5]],Correlations_sim[[6]],Correlations_sim[[7]],Correlations_sim[[8]],Correlations_sim[[9]],Correlations_sim[[10]],Correlations_sim[[11]],Correlations_sim[[12]]))
-
-rm(Correlations_sim)
-
-Correlations_sim_new<-tidyr::gather(Correlations_new_sim,"S_child","Correlation",-zooid)
-
-Correlations_sim<-Correlations_sim_new %>% tidyr::spread(key=zooid, value=Correlation) 
-
-species_tree_annotated_sim<- ape::chronos( phyldog_species_numbered_tree, lambda=1, model="correlated", quiet=TRUE )
-
-tags<-species_tree_annotated_sim %>% as_tibble %>% tibble::add_column(.,S= c(S_child=node_map$S[match(node_map$species,species_tree_annotated_sim$tip.label)], species_tree_annotated_sim$node.label))
-
-tags<-dplyr::left_join(tags,Correlations_sim,by=c("S"="S_child")) 
-
-species_tree_annotated_sim<- as.treedata(tags)
-
-trait<-Correlations_sim_new 
-trait$S_child<-factor(trait$S_child, levels=species_tree_annotated_sim@data$S)
-trait_plot<- trait %>%  filter(S_child%in%c("4","6","9","18","26","32","35"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
-
-trait_plot2<- trait %>%  filter(S_child%in%c("N37"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
-
-trait_plot3<- trait %>%  filter(S_child%in%c("N23"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
-
-trait_plot4<- trait %>%  filter(S_child%in%c("N15"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
-
-trait_plot5<- trait %>%  filter(S_child%in%c("N12"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
-
-trait_plot7<- trait %>%  filter(S_child%in%c("N7"))%>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(-1,1))
-
-trait_plot_all<- trait %>% ggplot()+geom_tile(aes(zooid,S_child,fill=Correlation))+theme(axis.text.x=element_text(angle = 30, hjust = 1))+ ggplot2::scale_fill_continuous(low='#BBDEF2', high='#0B4A6D',limits=c(0.5,0.9))
-
-
-###Export all of these plots to build figure
-
-```
 
 # Evolution of gene expression across species and specialized zooids in Siphonophora {-}
-Catriona Munro^1,2^,  Stefan Siebert^3^, Felipe Zapata^4^, Mark Howison^5^, Casey W. Dunn^6^
+Catriona Munro^1,2^,  Stefan Siebert^3^, Mark Howison^4^, Felipe Zapata^5^, Casey W. Dunn^6^
 \newline
 \newline
 ^1^ Department of Ecology and Evolutionary Biology, Brown University, Providence, RI 02912, USA \newline
 ^2^ Current address: Collège de France, PSL Research University, CNRS, Inserm, Center for Interdisciplinary Research in Biology, 75005 Paris, France \newline
 ^3^ XXXXXX Insert Stefan address XXXXXXXXXXX \newline
-^4^ Department of Ecology and Evolutionary Biology, University of California Los Angeles, Los Angeles, CA 90095, USA \newline
-^5^ Watson Institute for International and Public Affairs, Brown University, Providence, RI 02912, USA \newline
+^4^ Research Improving People's Lives (RIPL), Providence, RI, USA \newline
+^5^ Department of Ecology and Evolutionary Biology, University of California Los Angeles, Los Angeles, CA 90095, USA \newline
 ^6^ Department of Ecology and Evolutionary Biology, Yale University, New Haven, CT 06520, USA
 
 
 
 ## Abstract {-}
 
+Siphonophores are highly complex colonial organisms, consisting of bodies (called zooids) that share a common gastrovascular cavity but that are functionally specialized to specific tasks, including feeding, swimming, and reproducing. In this paper, we use RNA-seq to investigate the functional specialization of siphonophore zooids at a molecular level. We investigated expression patterns in five siphonophore zooids, and one specialized tissue (the pneumatophore, a gas filled float), across seven siphonophore species, in addition to unique species-specific zooids, and where possible developing and mature zooids. We used classical differential gene expression analyses within species to identify patterns that define particular zooid types, and gain insight into the genes that may be playing a role in the structure, maintenance, and functioning of zooids. We identified hundreds of high transcript abundance genes that are specific to particular zooids, as well as a number of putative transcription factors that have higher expression in particular zooids and developmental stages. We also examined whether gene expression patterns could distinguish novel, distinct species-specific zooid types within three species. We found clear evidence for morphological and functional differences among the tentacular palpon and gastrozooid of _Physalia physalis_, including putative toxin genes with distinct expression profiles.  By contrast we found few morphological or functional differences between yellow and white gastrozooids in _Bargmannia elongata_, or between gastric and B-palpons in _Agalma elegans_. Lastly, we compare gene expression across species, to identify putative clade/lineage or zooid specific expression patterns. We use TPM10K expression values, a metric which normalizes TPM to account for different sequencing depths among species, as well as ratios of expression counts to control for unknown species and gene-specific counting-efficiency coefficients. Using classical analyses using strict orthologs (Strict Ortholog Filtering of Trees), we identified 494 species-variable genes, and 349 tissue-variable genes. We also introduce new phylogenetically informed methods that involve filtering expression data using branches in gene trees that are equivalent to branches in the species tree (XXXXX name STEEL). We find that gene expression patterns tend to be largely consistent among species, as most expression ratios show very little change across species tree equivalent gene tree branches. We also identified a number of branches with very large expression changes, representing putative linage specific shifts in expression.
+
 ## Introduction {-}
 
-Gene expression is an important component of phenotypic diversity within and among units of biological organization, including cells, tissues, organs, and species [@Brawand:2011du; @gilad2005multi; @king1975evolution; @rifkin2003evolution]. There are a number of ways in which gene expression can change, including in the relative magnitude of expression, or temporal or spatial shifts in expression [@carroll2005evolution; @romero2012comparative; @wray2003evolution]. With high throughput RNA-seq data, it is possible to quantify the relative expression level of a large number of genes within and among species, homologous organs, and developmental timepoints. Based primarily on qualitative distance measures and principal component analysis (PCA) of expression across 1:1 orthologs, most studies suggest that gene expression is more conserved among homologous tissues of the same type across different species than among different tissues within the same species; suggesting that molecular, cellular and developmental pathways are highly conserved among species [@Brawand:2011du; @breschi2016gene; @cardoso2019gene; @clarke2017evolutionary; @gilad2015reanalysis; @khaitovich2004neutral; @merkin2012evolutionary; @10.1093/molbev/msz212]. Other studies found the opposite result [@lin2014comparison; @pankey2014predictable; @tschopp2014relative; @yang2013organ], however re-analyses contest these findings [@gilad2015reanalysis; @gu2015understanding; @sudmant2015meta]. These global patterns of gene expression, however, fail to account for gene-specific patterns, which may vary in tissue and species specificity, and clustering patterns may be driven by the behavior of a small subset of genes [@breschi2016gene].  In this study, we take a gene-centric approach using phylogenetic comparative methods (PCMs) to compare gene expression patterns between different siphonophore zooids, and one specialized tissue, and map expression values directly onto gene trees, in order to investigate evolutionary changes gene expression of different tissues across branches in gene trees.
-
-Only a handful of studies have applied PCMs to compare gene expression values across species [@clarke2017evolutionary; @Chang:2014hq; @Chen229096; @Eng:2009gp; @gu2004statistical; @Oakley:2005ky; @Rohlfs:2015bd; @stern2018evolution; @Whitney:2011fw]. PCMs were developed to address challenges in comparing trait data across species, particularly the non-independence of traits due to the evolutionary history of the species [@dunn2013phylogenetic; @Felsenstein:1985ua; @Felsenstein:2008cl; @FitzJohn:2012ey;@Grafen:1989um; @Revell:2012jd; @Pagel:1999gc; @Uyeda:2014jl]. Multiple pairwise comparisons are frequently used in comparative genomic work, however re-analysis of the same data using PCMs has been shown to support very different conclusions; underscoring the importance of considering species relationships when making statements about evolutionary processes [@dunn2018pairwise].
-
-Analyses of gene expression that do take phylogeny into account typically focus on strict orthologs and map expression values onto the species tree [@Chen229096;Oakley:2005ky; @Rohlfs:2015bd; @stern2018evolution], while other analyses use the expression values themselves to build neighbor-joining trees [@Brawand:2011du; @stern2018evolution]. However, in addition to understanding species relationships, understanding the homology of genes is critical for understanding the evolution of gene expression. Gene phylogenies are often used to study species relationships and the history of gene duplication and loss, but they are more useful than that -- they can also be used to study the evolution of gene traits such as expression. Gene phylogenies are hypotheses about the evolutionary relationship of gene sequences to one another, and gene topology reflects a number of evolutionary events, including speciation events, gene duplication and loss, and molecular evolution.
-
-Siphonophores are highly complex, colonial "superorganisms" consisting of asexually produced bodies (termed zooids) that are homologous to solitary free-living polyps and medusae, but that share a common gastrovascular cavity [@dunn2006evolution;@mackie1963; @mackie1986aggregates;@mackie1987siphonophore;@totton1965synopsis]. The functional specialization of siphonophore zooids has been of central interest to zoologists since the 19th century, in part because siphonophores are considered to have a greater level of functional specialization than any other colonial animal, but also because these zooids are highly interdependent [@Beklemishev1969; @mackie1963].
+Colonial animals, consisting of genetically identical bodies that are physically and physiologically connected, can be found across the metazoan tree of life [@hiebert2020coloniality]. Functional specialization of such bodies has evolved multiple times within colonial animals, with siphonophores in particular showing the greatest diversity of functionally specialized bodies [@Beklemishev1969]. Siphonophores are highly complex, colonial “superorganisms” consisting of asexually produced bodies (termed zooids) that are homologous to solitary free-living polyps and medusae, but that share a common gastrovascular cavity [@dunn2006evolution;@mackie1963; @mackie1986aggregates;@mackie1987siphonophore;@totton1965synopsis]. The extreme specialization of siphonophore zooids has been of central interest to zoologists since the 19th century, in part because these zooids are highly interdependent [@Beklemishev1969; @mackie1963]. Siphonophore zooids have been likened to animal organs, with each functionally specialized zooid performing distinct roles within the colony [@mackie1963]. While this analogy works well for understanding the function of zooids within the colony as a whole, the analogy falls short in terms of explaining the evolutionary origin and development of these biological units: functionally specialized zooids are evolutionarily homologous to free living organisms, they are multicellular, possess distinct zooid specific cell types, and show regional subfunctionalization [@church2015histology;@Mackie1960;@totton1965synopsis]. While the developmental mechanisms generating zooids are very different in different clades of colonial animals [@carre1967; @carre1969etude; @carre1991complete; @dunn2006evolution; @siebert2015stem], the evolutionary processes acting on zooids may be similar to those acting on other modular biological units such as cell type, tissue, and organ [@hiebert2020coloniality]. The cellular and molecular processes underlying the patterning and molecular function of functionally specialized cnidarian zooids remain an open biological question. In recent years there has been a focus in particular on differential gene expression patterns found in different functionally specialized zooids [@sanders2014differential; @sanders2015interspecific; @Siebert:2011gv]. 
 
 Efforts to investigate the functional specialization of siphonophores have been limited, in part because there have been few detailed investigations of zooid structure. In the last half century, the microanatomy of siphonophore zooids and tissues has been investigated in only a handful of siphonophore species [@BARDI2007; @carre1969etude;@church2015histology; @Mackie1960]. This leaves many unknowns about how zooid structure and function differ across zooid types and species. Recent *in situ* gene expression analyses in siphonophores have described where a small number of pre-selected genes are expressed at high spatial resolution [@church2015histology; @Siebert:2011gv;@siebert2015stem], but these methods are limited since they require a large number of specimens per gene and siphonophores are relatively difficult to collect. RNA-seq analyses of hand-dissected specimens [@macrander2015rna;@sanders2014differential;@sanders2015interspecific;@Siebert:2011gv], in contrast, can describe the expression of a very large number of genes at low spatial resolution. The fact that so much data is obtained from each specimen is particularly advantageous in difficult-to-collect organisms like siphonophores. An earlier RNA-seq study of gene expression in two zooid types in a single siphonophore species showed the potential of this method to better understand differences between zooids [@Siebert:2011gv]. 
 
@@ -745,11 +577,28 @@ knitr::include_graphics("Figures/Siphonophoresare.pdf")
 
 ```
 
-In this study we use RNA-seq data to conduct differential expression analyses among siphonophore zooids, and one specialized tissue (the pneumatophore, a gas filled float), within siphonophore species, and also map RNA-seq data directly onto gene phylogenies in order to compare gene expression signatures within zooid types across species. We also investigate differential gene expression patterns within species, in particular focusing on three species-specific zooid types that represent lineage specific zooid diversification events. 
+In this study we use RNA-seq data investigate the functional specialization and evolution of zooids across siphonophore species. To carry out these analyses, we also address three key challenges to study the evolution of gene expression in a comparative framework [@dunn2013phylogenetic]. First, we introduce a new metric to normalize gene expression which is valid for comparison across species. A common metric used to quantify gene expression is Transcripts Per Million (TPM) [@li2011rsem; @wagner2012measurement]. TPM is a relative measure of expression which depends on the number of genes present in a reference. Hence, TPM values are a valid metric when comparing libraries within a single species, but are not directly comparable across species when the references are incomplete, or genes have been gained and lost in the course of evolution. To address this issue, we introduce Transcripts Per Million 10K (TPM10K), a metric which normalizes TPM to account for different sequencing depths among species (see Methods for details). 
+
+Second, we further account for gene and species effects to compare gene expression across genes and species. Normalized read counts produced by RNA-seq experiments are proportional to gene expression, but they are also impacted by factors that can vary across genes and species such as gene sequence and length. Therefore, to estimate and compare expected gene counts it is necessary to model such factors with unknown species and gene-specific counting-efficiency coefficients [@dunn2013phylogenetic]. A direct comparison of expected gene counts among species can be misleading if differences in counts are simply due to differences in counting efficiency and not due to differences in expression. To address this issue, we use ratios of expected counts to compare expression across genes and species. Using ratios of counts, we are able to eliminate species- and gene- specific counting efficiency within species, as the unknown counting efficiency factor is in both the numerator and the denominator, and is thus removed prior to comparisons among species [@dunn2013phylogenetic]. 
+
+Third, we use a novel approach to investigate the evolution of gene expression on gene trees with complex evolutionary histories. Most evolutionary studies of gene expression focus exclusively on comparing expression values of strict orthologs (i.e., gene lineages related only by speciation events) which are shared across all species. We call this type of classical analysis Strict Ortholog Filtering of Trees (SOFT). This limits analyses to the subset of genes that have no evidence of duplication. This is an all or nothing approach, where gene trees are retained if they have one sequence for each species, and discarded if there are multiple sequences in any of the species. Because this is usually such a small fraction of genes, traditional SOFT analyses discard a large fraction of the data, including many gene families that may be of interest to the investigator. 
+
+Because the history of genes is characterized by more complex scenarios involving gene duplication and speciation, we introduce a new method that takes advantage of this rich history to examine the evolution of gene expression across more genes and species. We call this method Species Tree Edge Extraction and Layover (STEEL) (Fig. \@ref(fig:methods-comp)), as we map expression data to gene phylogenies and identify equivalent branches in the species tree which are descended from speciation events (hereafter, species-equivalent branches) in order to make valid comparisons across species. While SOFT is a gene tree filtering approach, where entire trees are discarded due to even a single duplication event, STEEL is a branch filtering approach. This means that STEEL retains many informative branches from trees that would be removed by SOFT, and preserves many more evolutionary comparisons for analyses.
+
+Briefly, the principles of STEEL are as follows: first we identify speciation and duplication events in the gene phylogeny, specifically labelling speciation nodes in the gene tree that correspond to the species tree (Fig. \@ref(fig:methods-comp), step 1). Next, we map gene expression values to the tips of the gene tree (Fig. \@ref(fig:methods-comp), step 2), and use ancestral trait reconstruction methods to reconstruct expression values at the nodes (Fig. \@ref(fig:methods-comp), step 3). Then, we calculate scaled expression values across branches, by subtracting the expression value at the child node from the parent node, and dividing by branch length (branch lengths are calibrated against the species tree) (Fig. \@ref(fig:methods-comp), step 4). Finally, we identify branches in the gene trees that correspond to specific branches in the species tree, that we call 'species-equivalent branches' (Fig. \@ref(fig:methods-comp), step 5). Species-equivalent branches are gene tree branches that have parent and child nodes that are both speciation events and that correspond to speciation events and branches in the species tree. Each branch in the species tree is given a unique letter and the species-equivalent branches in gene trees are given the same letter (Fig. \@ref(fig:methods-comp), step 5). This method enables the selection of specific branches within gene trees that are equivalent to branches within the species tree, and are thus comparable with one another across all gene trees. Unlike the SOFT approach, this approach considers equivalent branches that are descended from speciation events, but that have more complex evolutionary histories. For example, due to deeper gene duplication events, gene trees often contain multiple branches that correspond to the same branch in the species tree (Fig. \@ref(fig:methods-comp), step 5). Our method allows us to consider all of these branches. 
+
+Using the methods described above, combined with classical differential gene expression analysis, we conducted differential expression analyses among siphonophore zooids, and one specialized tissue (the pneumatophore, a gas filled float), in seven siphonophore species to address three questions. First, we analyzed differences in gene expression within species to identify patterns that define particular zooid types, and gain insight into the genes that may be playing a role in the structure, maintenance, and functioning of zooids. Second, we examined whether gene expression patterns could distinguish novel, distinct species-specific zooid types within particular species. Third we compared gene expression across the seven siphonophore species, to identify putative clade/lineage or zooid specific expression patterns. 
+(ref:methods-comp) Methods used to identify changes in expression across branches in gene trees, called Species Tree Edge Extraction and Layover (STEEL). Step 1, we label each of the nodes in the species phylogeny, and identify equivalent speciation nodes across every gene tree (an exemplar is shown here). Step 2, we map expression values (TPM10K) to the tips . Step 3, we reconstruct ancestral trait expression values at all nodes where expression data are available. Step 4, we calculate scaled change in expression (child node expression - parent node expression / branch length). Branch length is calibrated to the species tree branch lengths. Step 5, we identify branches in gene trees that correspond to equivalent branches in the species tree. There may be more than one branch in a gene tree that corresponds to the same branch in the species tree.
+
+```{r methods-comp, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, out.height='0.7\\textheight', out.width='0.7\\textheight', fig.cap='(ref:methods-comp)', fig.align = 'center'}
+
+knitr::include_graphics("figures/Methods_figure.pdf")
+
+```
 
 ## Results {-}
 
-### Differential expression within species {-}
+### Within species analyses: which genes are specific to particular zooid types? {-}
 
 ```{r differentially-expressed, verbose= FALSE, include=F, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
 
@@ -1174,9 +1023,9 @@ DE_zooids<-DE_zooids %>% dplyr::left_join(blast_lookup,by="sequence_ids") %>% dp
 
 unique_zooids<-unique_zooids %>% dplyr::left_join(blast_lookup,by="sequence_ids") %>% dplyr::left_join(GO,by="sequence_ids") %>% dplyr::left_join(reduced_nodes, by="sequence_ids")
 
-readr::write_csv(unique_zooids, "Supplementary_Data/Supplementaryfile1.csv", na = "NA")
+readr::write_csv(DE_zooids, "Supplementary_Data/Supplementaryfile1.csv", na = "NA")
 
-readr::write_csv(DE_zooids, "Supplementary_Data/Supplementaryfile2.csv", na = "NA")
+readr::write_csv(unique_zooids, "Supplementary_Data/Supplementaryfile2.csv", na = "NA")
 
 #### GO analyses -- commented out to speed up knit time
 
@@ -1185,6 +1034,7 @@ readr::write_csv(DE_zooids, "Supplementary_Data/Supplementaryfile2.csv", na = "N
 # Nanomia_GO_Gasmat<- Go_lookup("Nanomia",Nanomia_Gasmat)
 # Frillagalma_GO_Gasmat<- Go_lookup("Frillagalma",Frillagalma_Gasmat)
 # Physalia_GO_Gasmat<- Go_lookup("Physalia",Physalia_Gasmat)
+# Physalia_GO_Tenpalmat<- Go_lookup("Physalia",Physalia_Tenpalmat)
 # 
 # Bargmannia_GO_Gasdev<- Go_lookup("Bargmannia",Bargmannia_Gasdev)
 # Nanomia_GO_Gasdev<- Go_lookup("Nanomia",Nanomia_Gasdev)
@@ -1210,11 +1060,11 @@ readr::write_csv(DE_zooids, "Supplementary_Data/Supplementaryfile2.csv", na = "N
 # 
 # Diphyes_GO_Gon<- Go_lookup("Diphyes",Diphyes_Gon)
 
-Bargmannia_GO_Gaswhimat<-Go_lookup("Bargmannia", Bargmannia_Gaswhimat)
-Bargmannia_GO_Gasyelmat<-Go_lookup("Bargmannia", Bargmannia_Gasyelmat)
+#Bargmannia_GO_Gaswhimat<-Go_lookup("Bargmannia", Bargmannia_Gaswhimat)
+#Bargmannia_GO_Gasyelmat<-Go_lookup("Bargmannia", Bargmannia_Gasyelmat)
 
-
-
+#Bargmannia_GO_Gasyelmatunique<-Go_lookup("Bargmannia", Bargmannia_Gasyelmat_unique)
+#Bargmannia_GO_Gaswhimatunique<-Go_lookup("Bargmannia", Bargmannia_Gaswhimat_unique)
 
 ##identify putative transcription factors -- emphasis on putative. this will find all genes with DNA binding function
 
@@ -1259,7 +1109,9 @@ check_hit<-function(object,item){
   true_false<-true_false %>% unlist()
   return(true_false)
 }
+
 y<-lapply(e,check_hit, unique(x$blast_hit))
+
 
 ```
 
@@ -1267,24 +1119,13 @@ We sequenced mRNA from microdissected zooids from seven different siphonophore s
 
 The first component of variation that we assessed was among technical replicates. The technical replicates consist of re-sequenced developing nectophores and developing gastrozooids from the same *Frillagalma vityazi* individual that were spiked in across multiple lanes and runs. Lane and run effects have been proposed as major sources of technical variability in RNA-seq data that may confound observations of biological variation [@auer2010statistical; @mcintyre2011rna]. The differences between technical replicates (Fig. \@ref(fig:technical-replicate)) were found to be much smaller (0.39% variance of expression distance) than the differences between zooids (98.32% variance of expression distance). Differences among technical replicates of the same zooid were correlated with library size and run, not by lane.
 
-The second component of variation we considered was biological variation among sampled colonies. Specimens were collected in the wild at different depths and over different time periods, but despite these environmental factors there was remarkably little variation among sampled colonies. Some samples did show greater variation across replciates, such as a developing palpon replicate in *Nanomia bijuga* (Fig. \@ref(fig:pca-nanomia)), and a developing gastrozooid and male gonodendra in *Frillagalma vityazi* (Fig. \@ref(fig:pca-Frillagalma)). 
+The second component of variation we considered was biological variation among sampled colonies. Specimens were collected in the wild at different depths and over different time periods, but despite these environmental factors there was remarkably little variation among sampled colonies. Some samples did show greater variation across replicates, such as a developing palpon replicate in *Nanomia bijuga* (Fig. \@ref(fig:pca-nanomia)), and a developing gastrozooid and male gonodendra in *Frillagalma vityazi* (Fig. \@ref(fig:pca-Frillagalma)). 
 
-(ref:dge-zooids) Differentially expressed genes in siphonophore zooids, with two species *Agalma elegans* and *Bargmannia elongata* shown here. Within the circles, the number of differentially expressed genes found uniquely within a particular zooid (bold) and the total number of differentially expressed genes identified in pairwise comparisons between zooids (square brackets). Connections between zooids show the number of highly differentially expressed genes shared among those zooids. *Due to the very large number of shared genes among Palpons and B Palpons, this number includes genes that are shared between the Palpon and B Palpon. 
+The third component of variation we considered was among zooids/specialized tissues within species. This was the greatest component of variation (Fig. \@ref(fig:pca-diphyes)--\@ref(fig:pca-physalia)). We identified genes that show higher transcript abundance in particular zooids, and in the pneumatophore, for each of the sampled species, based on pairwise comparisons (supplementary file 1). From this, we identified a subset of genes that have higher transcript abundance in only one zooid but not in any other zooid within a given species (Fig. \@ref(fig:unique-zooids), supplementary file 2).
 
+For each species and zooid, we found GO term enrichment for biological processes consistent with the functional specialization of the zooid. In gastrozooids that are solely responsible for feeding and digestion, for example, we found these zooids to be enriched for genes involved in chitin, glutathione, and peptide catabolism, proteolysis, as well as metabolism of carbohydrates. Likewise for male gonodendra, we found GO term enrichment for biological processes such as sperm flagellum, mitotic cell cycle process, DNA replication. For female gonodendra, there was GO term enrichment for a number of biological processes including mitotic cell cycle process, DNA replication (in *Agalma elegans*), as well as a number of signalling pathways and developmental processes (in *Frillagalma vityazi*).
 
-```{r dge-zooids, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, out.height='0.7\\textheight', out.width='0.7\\textheight', fig.cap= '(ref:dge-zooids)', fig.align = 'center'}
-
-knitr::include_graphics("figures/DE_all.pdf",auto_pdf = getOption("knitr.graphics.auto_pdf", FALSE))
-
-```
-
-The third component of variation we considered was among zooids/specialized tissues within species. This was the greatest component of variation (Figs. \@ref(fig:pca-diphyes)--\@ref(fig:pca-physalia)). 
-
-We identified genes that are significantly upregulated in particular zooids, and in the pneumatophore, for each of the sampled species. We also identified genes that are significantly upregulated in only one zooid and not in any other within a given species (Fig. \@ref(fig:dge-zooids), \@ref(fig:unique-zooids)). The list of genes that were identified as significantly differentially expressed only in a given species and zooid, and the associated transcriptome sequence ids, top blast hits, GO terms, and gene phylogeny ids, are available as supplementary data (supplementary file 1). The full list of genes upregulated in particular zooids, based on pairwise differential expression analyses, are available in supplementary file 2. 
-
-For each species and zooid, we found GO term enrichment for biological processes consistent with the functional specialization of the zooid. In gastrozooids that are solely responsible for feeding and digestion, for example, we found these zooids to be enriched for genes involved in proteolysis, chitin, glutathione and peptide catobolism, as well as metabolism of carbohydrates. Likewise for male gonodendra, we found GO term enrichment for biological processes such as sperm flagellum, mitotic cell cycle process, DNA replication. For female gonodendra, there was GO term enrichment for a number of biological processes including mitotic cell cycle process, DNA replication (in *Agalma elegans*), as well as a number of signalling pathways and developmental processes (in *Frillagalma vityazi*).
-
-Within the four best sampled species, we also identified `r x$short_blast_hit %>% unique() %>% length()` differentially expressed putative transcription factors (`r length(Bargmannia_TF)` out of `r y[[2]] %>% sum()` in *Bargmannia elongata*, `r length(Frillagalma_TF)` out of `r y[[4]] %>% sum` identified in *Frillagalma vityazi*, `r length(Agalma_TF)` out of `r y[[1]] %>% sum()` in *Agalma elegans* and `r length(Nanomia_TF)` out of `r y[[5]] %>% sum()` identified  in *Nanomia bijuga*). Many of these transcription factors are significantly differentially expressed in several zooids regardless of developmental stage (both mature and developing zooids), and a subset were found to be significantly differentially expressed only in particular zooids and developmental stages (\@ref(fig:transcription-factors)). 
+Within the four best sampled species, we also identified `r x$short_blast_hit %>% unique() %>% length()` higher abundance putative transcription factors (`r length(Bargmannia_TF)` out of `r y[[2]] %>% sum()` in *Bargmannia elongata*, `r length(Frillagalma_TF)` out of `r y[[4]] %>% sum` identified in *Frillagalma vityazi*, `r length(Agalma_TF)` out of `r y[[1]] %>% sum()` in *Agalma elegans* and `r length(Nanomia_TF)` out of `r y[[5]] %>% sum()` identified  in *Nanomia bijuga*). Many of these transcription factors have higher expression in several zooids regardless of developmental stage (both mature and developing zooids), and a subset were found to have higher expression only in particular zooids and developmental stages (Fig. \@ref(fig:transcription-factors)). 
 
 ```{r summarize-libraries, verbose= FALSE, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
 
@@ -1333,28 +1174,345 @@ summary %>% dplyr::mutate(
 
 ```
 
-### Unique species-specific zooids {-}
+### Novel species-specific zooids: can expression patterns distinguish distinct zooid types? {-}
 
-In siphonophores, there are several instances of lineage-specific zooid diversification events. We investigated gene expression patterns between the novel zooid type and the hypothesized ancestral type in three species. In *Bargmannia elongata* there are two morphologically distinct gastrozooids, that we termed "white" and "yellow" gastrozooids (Fig. \@ref(fig:novel-zooids)A and \@ref(fig:novel-zooids)B). The "yellow" gastrozooid is larger and darker and occurs as the 7th-10th gastrozooid on the stem [@dunn2005complex].  In the Portuguese man of war, *Physalia physalis*, the gastrozooid is unique compared to other gastrozooids in other species - it has a mouth, but no tentacle, and the basigaster region is greatly reduced [@Totton1960; @Mackie1960]. Meanwhile the tentacle is associated with another zooid, the tentacular palpon (Fig. \@ref(fig:novel-zooids)C) [@BARDI2007;@munro2019morphology; @Totton1960; @haeckel1888]. In *P. physalis*, both the gastrozooid and the tentacular palpon are considered to be subfunctionalized from an ancestral gastrozooid type [@munro2019morphology]. Finally, in *Agalma elegans*, there are thought to be at least two different palpon types: gastric palpons that arise at the base of the peduncle of the gastrozooid, and a palpon called the B-palpon (Fig. \@ref(fig:novel-zooids)D) [@dunn2006evolution]. The distinction between these two types of palpon is based on the location of these zooids - the gastrozooid is typically the last element of each cormidium, but based on the budding sequence, Dunn *et al* propose that the enlarged B-palpon is the last element in *A. elegans* [@dunn2006evolution]. Each of these cases represents a different type of novelty: in *Bargmannia elongata* the distinction between zooids was made based on size and color but not on obvious differences in function, in *P. physalis* the gastrozooids and tentacular palpons differ structurally and functionally, and finally in *A. elegans*, gastric palpons and B palpons differ only in colony location, development, and possibly size. 
+In siphonophores, there are several instances of lineage-specific zooid diversification events. We investigated gene expression patterns between the novel zooid type and the hypothesized most closely related zooid type in three species. In *Bargmannia elongata* there are two morphologically distinct gastrozooids, that we termed "white" and "yellow" gastrozooids (Fig. \@ref(fig:novel-zooids)A and \@ref(fig:novel-zooids)B). The "yellow" gastrozooid is larger and darker and occurs as the 7th-10th gastrozooid on the stem [@dunn2005complex].  In the Portuguese man of war, *Physalia physalis*, the gastrozooid is unique compared to other gastrozooids in other species - it has a mouth, but no tentacle, and the basigaster region is greatly reduced [@Totton1960; @Mackie1960]. Meanwhile the tentacle is associated with another zooid, the tentacular palpon (Fig. \@ref(fig:novel-zooids)C) [@BARDI2007;@munro2019morphology; @Totton1960; @haeckel1888]. In *P. physalis*, both the gastrozooid and the tentacular palpon are considered to be subfunctionalized from an ancestral gastrozooid type [@munro2019morphology]. Finally, in *Agalma elegans*, there are thought to be at least two different palpon types: gastric palpons that arise at the base of the peduncle of the gastrozooid, and a palpon called the B-palpon (Fig. \@ref(fig:novel-zooids)D) [@dunn2006evolution]. The distinction between these two types of palpon is based on the location of these zooids - the gastrozooid is typically the last element of each cormidium, but based on the budding sequence, Dunn *et al* propose that the enlarged B-palpon is the last element in *A. elegans* [@dunn2006evolution]. Each of these cases represents a different type of novelty: in *Bargmannia elongata* the distinction between zooids was made based on size and color but not on obvious differences in function, in *P. physalis* the gastrozooids and tentacular palpons differ structurally and functionally, and finally in *A. elegans*, gastric palpons and B palpons differ only in colony location, development, and possibly size. 
 
-A large number of genes were identified as being significantly differentially expressed between mature gastrozooids and the tentacular palpons in *Physalia physalis* (`r dge_sig[[6]]$TenpalmatGasmat %>% nrow()` genes in the mature tentacular palpon and `r dge_sig[[6]]$GasmatTenpalmat %>% nrow()` genes in the mature gastrozooid). A number of genes were found to be differentially expressed in the mature tentacular palpon relative to all other tissues, of which, `r Physalia_Tenpalmat_unique %>% length()` genes were found to have expression patterns that were not shared with the gastrozooid. In the gastrozooid `r Physalia_Gasmat_unique %>% length()` genes were found to have expression patterns that were not shared with the tentacular palpon. 
+A large number of genes were identified as being significantly upregulated in mature gastrozooids or  tentacular palpons in *Physalia physalis* (`r dge_sig[[6]]$TenpalmatGasmat %>% nrow()` genes in the mature tentacular palpon and `r dge_sig[[6]]$GasmatTenpalmat %>% nrow()` genes in the mature gastrozooid). A number of genes were found to have higher transcript abundance in the mature tentacular palpon relative to all other tissues, of which, `r Physalia_Tenpalmat_unique %>% length()` genes were found to be upregulated relative to other tissues that were not shared with the gastrozooid. In the gastrozooid `r Physalia_Gasmat_unique %>% length()` genes were found to be upregulated relative to other tissues that were not shared with the tentacular palpon. A number of genes upregulated in the tentacular palpon are uncharacterized, however we identified 46 putative toxins in the tentacular palpon, including hemostasis interfering and platelet aggregation activating toxins, phospholipases, serineproteases, hydrolases, metalloendoproteases, calglandulin-like genes, and a neurotoxin. By contrast, in the gastrozooid, we found 59 upregulated putative toxins, including pore-forming Conoporin-Cn1-like and Tereporin-Ca1-like toxins, multiple neurotoxins, hydrolases, serine proteases, toxins likely involved in the promotion of blood coagulation and inhibition of platelet aggregation. Reflecting the role of the gastrozooid in digestion, we also find upregulation of digestive enzymes, including chymotrypsin-like genes.   
 
-Between the white mature gastrozooid and the yellow mature gastrozooid in *Bargmannia elongata*, few significant expression differences were identified (`r dge_sig[[2]]$GaswhimatGasyelmat %>% nrow()` genes were up in "white" mature gastrozooids relative to `r dge_sig[[2]]$GasyelmatGaswhimat %>% nrow()` genes in "yellow" gastrozooids). Among genes that were found to be significantly differentially expressed in either "white" or "yellow" gastrozooids relative to all other tissues, `r Bargmannia_Gasyelmat_unique %>% length()` genes were unique to "yellow" gastrozooids and not found in "white" gastrozooids, and `r Bargmannia_Gaswhimat_unique %>% length()` genes were found in "white" gastrozooids and not found in "yellow" gastrozooids (Fig. \@ref(fig:dge-zooids), bottom panel). 
+Between the white mature gastrozooid and the yellow mature gastrozooid in *Bargmannia elongata*, few upregulated genes were identified (`r dge_sig[[2]]$GaswhimatGasyelmat %>% nrow()` genes were up in "white" mature gastrozooids relative to `r dge_sig[[2]]$GasyelmatGaswhimat %>% nrow()` genes in "yellow" gastrozooids). Among genes that were found to be significantly upregulated in either "white" or "yellow" gastrozooids relative to all other tissues, `r Bargmannia_Gasyelmat_unique %>% length()` genes were unique to "yellow" gastrozooids and not found in "white" gastrozooids, and `r Bargmannia_Gaswhimat_unique %>% length()` genes were found in "white" gastrozooids and not found in "yellow" gastrozooids. 
 
-Finally, in *Agalma elegans* very few differentially expressed genes were identified between the B palpon and gastric palpons  (`r dge_sig[[1]]$PalBmatPalmat %>% nrow()` and `r dge_sig[[1]]$PalmatPalBmat %>% nrow()` genes respectively. All three genes have no significant blast hit and did not map to any gene trees). Genes were identified that are upregulated in B palpons relative to all other zooids (gastric palpons were excluded). Of this, `r Agalma_PalponB_unique %>% length()` genes were found to be differentially expressed in the B palpon. Most of these genes overlapped with those found to be differentially expressed in the gastric palpon relative to all other zooids (`r intersect(Agalma_PalponB_unique,Agalma_Palpon_unique) %>% length()` genes) (Fig. \@ref(fig:dge-zooids), top panel).
+Finally, in *Agalma elegans* very few significantly upregulated genes were identified between the B palpon and gastric palpons  (`r dge_sig[[1]]$PalBmatPalmat %>% nrow()` had higher transcript abundance in B palpons and `r dge_sig[[1]]$PalmatPalBmat %>% nrow()` had higher transcript abundance in gastric palpons. All three genes have no significant blast hit and did not map to any gene trees). Genes were identified that are upregulated in B palpons relative to all other zooids (gastric palpons were excluded). Of this, `r Agalma_PalponB_unique %>% length()` genes were found to be differentially expressed in the B palpon. Most of these genes overlapped with those found to be differentially expressed in the gastric palpon relative to all other zooids (`r intersect(Agalma_PalponB_unique,Agalma_Palpon_unique) %>% length()` genes).
 
-### Evolution of gene expression {-}
+### Comparative gene expression across species: can we identify lineage and zooid specific expression patterns? {-}
+
+**Strict Ortholog Filtering of Trees** 
+
+```{r soft, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE}
+Orthologs2<-read_tsv("strict_orthologs/Aug31/Single_Copy_Orthologue_Sequences/Strict_orthologs.fa")
+Orthologs2<-Orthologs2 %>% mutate(Gene=as.character(Gene))
+
+expression_pull<-function(object){
+x<-Fulldataframe %>% dplyr::select(c(sequence_ids, Gasdev, Palmat,Gasmat, Necdev, Pne, Gonmal, Gonfem ))
+subset<-Orthologs2[Orthologs2$Species %in% object@species,]
+tpm<-object@tpm[rownames(object@tpm) %in% subset$Gene,] %>% as.data.frame()
+treatment<-object@treatment %>% stringr::str_replace_all(.," ",".")
+species<-object@species %>% stringr::str_replace_all(.," ",".")
+col<-paste(treatment,object@individual, sep="_")
+col<-paste(rep(species,length(treatment)),col,sep="_")
+colnames(tpm)<-col
+tpm<- tpm %>% rownames_to_column(., var="Gene")
+tpm<-tpm %>%  left_join(Orthologs2)
+tpm <- tpm %>% dplyr::select(.,-c(Species,Gene))
+return(tpm)
+}
+
+
+expression_pull<-function(object){
+x<-Fulldataframe %>% dplyr::select(c(sequence_ids, Gasdev, Palmat,Gasmat, Necdev, Pne))
+subset<-Orthologs2[Orthologs2$Species %in% object@species,]
+tpm<-x[x$sequence_ids %in% subset$Gene,]
+#remove na columns
+tpm<-tpm %>% select_if(~sum(!is.na(.)) > 0)
+species<-object@species %>% stringr::str_replace_all(.," ",".")
+tpm<- tpm %>% dplyr::rename_at(vars(-sequence_ids), ~ paste(species,., sep="_"))
+tpm<- tpm %>% dplyr::rename(Gene=sequence_ids) %>% mutate(Gene = as.character(Gene))
+tpm<-tpm %>% left_join(subset)
+tpm <- tpm %>% dplyr::select(.,-c(Species,Gene))
+return(tpm)
+}
+
+test<-lapply(e[c(1,2,4,5)], expression_pull)
+test<-purrr::reduce(test,left_join)
+
+rownames(test)<-test$Orthogroup
+test<- test %>% na.omit()
+test <-test %>% dplyr::select(-"Orthogroup")
+
+compute_cv <- function(x) sd(x) / mean(x)
+cv <- apply(test, 1, compute_cv)
+df<-data.frame(cv=cv)
+keep_test<-test
+test<- test %>% rownames_to_column(., var="Orthogroup")
+#summary(test)
+test<-test %>% bind_cols(df) %>% arrange(desc(cv))
+pcatest<-test  %>% dplyr::select(-c(cv,Orthogroup))
+
+pca_data<-prcomp(t(pcatest))
+pca_data_perc<-round(100*pca_data$sdev^2/sum(pca_data$sdev^2),1)
+test_names<-colnames(pcatest) %>% str_split("_")
+species<-lapply(test_names, `[[`, 1) %>% unlist() %>% str_replace("\\."," ")
+treatment<-lapply(test_names, `[[`, 2) %>% unlist() 
+#replicate<-lapply(test_names, `[[`, 3) %>% unlist()
+df_pca_data <- data.frame(PC1 = pca_data$x[,1], PC2 = pca_data$x[,2], species=species, treatment=treatment)
+plot_pca_ortholog<-df_pca_data %>% ggplot()+geom_point(aes(PC1,PC2, col=treatment, shape=species)) + 
+  scale_shape_manual(values=c("Agalma elegans"=15,"Nanomia bijuga"=0,"Diphyes dispar"=8,"Physalia physalis"=10,"Frillagalma vityazi"=16,"Bargmannia elongata"=9, "Apolemia lanosa"=23)) +
+  xlab(paste0("PC1: ",pca_data_perc[1],"% variance")) +  ylab(paste0("PC2:",pca_data_perc[2],"% variance")) +
+  scale_color_manual(values=c("Gonfem"="#BFA7CE","Gonmal"="#F2B6BC","Necdev"="#B9C977","Palmat"="#F4DF1C","Gasdev"="#F78508", "Gasmat"="#F9C153", "Pne"="#8DCCE2"))
+
+
+### calculating proportion of variance based on linear models
+
+m=keep_test
+
+# Code modified from Breschi et al. Genome Biology 2016;  https://github.com/abreschi/Rscripts/blob/master/anova.R
+
+res = t(sapply(1:nrow(m), 
+               function(i) {
+                 mm = suppressMessages(reshape2::melt(m[i,]))
+                 tmp = tibble(value=mm$value, species,treatment);
+                 #		print(tmp)
+                 aov_res = anova(lm(value~species+treatment, tmp));
+                 return(unlist(aov_res[,-1]))
+               }
+))
+
+tmp = tibble(value=reshape2::melt(m[1,])$value, species,treatment);
+aov_res = anova(lm(value~species+treatment, tmp));
+labels = apply(expand.grid(rownames(aov_res), c("SS", "MeanSq", "F", "pvalue")), 1, paste, collapse="_") 
+
+res = data.frame(res)
+colnames(res) <- labels
+
+
+# Adjust pvalue
+for (i in grep("pvalue", colnames(res))) {
+  adj_header = paste(colnames(res)[i], "adj", sep=".")
+  res[,adj_header] = p.adjust(res[,i], method="BH")
+}
+
+res = sapply(res, round, 4)
+rownames(res) <- rownames(m)
+
+# If the variance is zero set the results to NA
+res[apply(m, 1, var)==0,] <- NA
+
+res<- as.data.frame(res) %>% rownames_to_column(., var="Orthogroup")
+
+stvariance<-as_tibble(res) %>% dplyr::select(c(Orthogroup,species_SS,treatment_SS,Residuals_SS))
+
+stvariance<-stvariance %>% rowwise() %>% mutate(species_var=species_SS/(species_SS+treatment_SS+Residuals_SS),treatment_var=treatment_SS/(species_SS+treatment_SS+Residuals_SS))
+stvariance<-stvariance %>% rowwise() %>% mutate(speciesdom=(species_var+treatment_var)>=0.75 && species_var>=2*treatment_var)
+stvariance<-stvariance %>% rowwise() %>% mutate( treatmentdom= (species_var+treatment_var)>=0.75 && treatment_var>+2*species_var)
+
+stvariance<-stvariance %>% rowwise() %>% mutate(class= case_when(speciesdom ==TRUE & treatmentdom ==FALSE ~ "SVG",treatmentdom ==TRUE & speciesdom ==FALSE ~"TVG",treatmentdom ==FALSE & speciesdom ==FALSE ~"other"))
+
+group_colours<-c(other="grey",SVG="#F8766D",TVG="#00BFC4")
+Variance_explained<-stvariance %>% ggplot()+geom_point(aes(species_var,treatment_var,col=class))+ scale_color_manual(values=group_colours) +xlab("Proportion of variance across species") + ylab("Proportion of variance across tissue")
+
+Absolute_variance<-stvariance %>% ggplot()+geom_point(aes(species_SS,treatment_SS,col=class))+ scale_color_manual(values=group_colours) +xlab("Species Sum of Squares") + ylab("Tissue Sum of Squares")
+
+#Add blast_hit
+
+Orthologs_blast<-Orthologs2 %>% mutate(Gene=as.numeric(Gene))
+Orthologs_blast<-Orthologs_blast %>%  left_join(blast_lookup, by =c("Gene"="sequence_ids")) %>% left_join(GO, by=c("Gene"="sequence_ids")) 
+
+
+
+Orthologs_blast<-Orthologs_blast %>% group_by(Orthogroup) %>% summarize(Common_blast=max(blast_hit), Common_GO=max(GO_term, na.rm=TRUE))
+
+GO_by_ortholog<-strsplit(Orthologs_blast$Common_GO,";")
+names(GO_by_ortholog)<-Orthologs_blast$Orthogroup
+
+ortholog_tree_names<-names(GO_by_ortholog)
+
+fishertest<-function(ortholog, GO_ontology){
+
+geneList <- factor(as.integer(ortholog_tree_names %in% unique(ortholog)))
+names(geneList) <- ortholog_tree_names
+
+GOdata <- new("topGOdata", ontology = GO_ontology, allGenes = geneList, annot = annFUN.gene2GO, gene2GO = GO_by_ortholog, nodeSize = 10)
+
+resultFisher<-runTest(GOdata, algorithm = "classic", statistic = "fisher")
+allRes <- GenTable(GOdata, classicFisher = resultFisher, ranksOf = "classicFisher", topNodes = 20)
+
+return(allRes)
+}
+
+stvariance<-stvariance %>% left_join(Orthologs_blast)
+
+m<- m %>% tibble::rownames_to_column(., var="Orthogroup")
+m3<-stvariance %>% select(Orthogroup,class,Common_blast)
+m<-m %>% left_join(m3)
+m<-reshape2::melt(m) %>% rename(expression=value)
+m<-m %>% separate(variable, c("species","tissue"),sep="_") 
+
+
+#stvariance %>% filter(treatmentdom==TRUE) %>% .$Orthogroup %>% fishertest(.,"BP")
+
+##Dominated by recombination -- especially gonozooids driving major tissue differences? Also - numbers of genes considered here are very small, hence weak p values
+
+#stvariance %>% filter(speciesdom==TRUE) %>% .$Orthogroup %>% fishertest(.,"BP")
+
+expression_pull2<-function(object){
+x<-Fulldataframe %>% dplyr::select(c(sequence_ids, Gasdev, Palmat,Gasmat, Necdev, Pne))
+subset<-Orthologs2[Orthologs2$Species %in% object@species,]
+tpm<-x[x$sequence_ids %in% subset$Gene,]
+tpm<-tpm %>% mutate(GasdevGasmat=(Gasdev+1)/(Gasmat+1),PalmatGasmat=(Palmat+1)/(Gasmat+1), PneGasmat=(Pne+1)/(Gasmat+1), NecdevGasmat=(Necdev+1)/(Gasmat+1))
+tpm<-tpm %>% select(-c(Gasdev, Gasmat,Palmat, Necdev, Pne))
+#remove na columns
+tpm<-tpm %>% select_if(~sum(!is.na(.)) > 0)
+species<-object@species %>% stringr::str_replace_all(.," ",".")
+tpm<- tpm %>% dplyr::rename_at(vars(-sequence_ids), ~ paste(species,., sep="_"))
+tpm<- tpm %>% dplyr::rename(Gene=sequence_ids) %>% mutate(Gene = as.character(Gene))
+tpm<-tpm %>% left_join(subset)
+tpm <- tpm %>% dplyr::select(.,-c(Species,Gene))
+return(tpm)
+}
+
+test2<-lapply(e[c(1,2,4,5)], expression_pull2)
+test2<-purrr::reduce(test2,left_join)
+
+rownames(test2)<-test2$Orthogroup
+test2<- test2 %>% na.omit()
+test2 <-test2 %>% dplyr::select(-"Orthogroup")
+
+compute_cv <- function(x) sd(x) / mean(x)
+cv <- apply(test2, 1, compute_cv)
+df<-data.frame(cv=cv)
+keep_test2<-test2
+test2<- test2 %>% rownames_to_column(., var="Orthogroup")
+
+test2<-test2 %>% bind_cols(df) %>% arrange(desc(cv))
+
+pcatest2<-test2  %>% dplyr::select(-c(cv,Orthogroup))
+
+pca_data2<-prcomp(t(pcatest2))
+pca_data_perc2<-round(100*pca_data2$sdev^2/sum(pca_data2$sdev^2),1)
+test_names2<-colnames(pcatest2) %>% str_split("_")
+species2<-lapply(test_names2, `[[`, 1) %>% unlist() %>% str_replace("\\."," ")
+treatment2<-lapply(test_names2, `[[`, 2) %>% unlist() 
+#replicate<-lapply(test_names, `[[`, 3) %>% unlist()
+df_pca_data2 <- data.frame(PC1 = pca_data2$x[,1], PC2 = pca_data2$x[,2], species=species2, treatment=treatment2)
+plot_pca_ortholog2<-df_pca_data2 %>% ggplot()+geom_point(aes(PC1,PC2, col=treatment, shape=species)) + 
+  scale_shape_manual(values=c("Agalma elegans"=15,"Nanomia bijuga"=0,"Frillagalma vityazi"=16,"Bargmannia elongata"=9)) +
+  xlab(paste0("PC1: ",pca_data_perc[1],"% variance")) +  ylab(paste0("PC2:",pca_data_perc[2],"% variance")) +
+  scale_color_manual(values=c("GasdevGasmat"="#F78508","NecdevGasmat"="#B9C977","PalmatGasmat"="#F4DF1C","PneGasmat"="#8DCCE2"))
+
+### calculating proportion of variance based on linear models
+
+m2=keep_test2
+
+# Code modified from Breschi et al. Genome Biology 2016;  https://github.com/abreschi/Rscripts/blob/master/anova.R
+
+res2 = t(sapply(1:nrow(m2), 
+               function(i) {
+                 mm = suppressMessages(reshape2::melt(m2[i,]))
+                 tmp = tibble(value=mm$value, species2,treatment2);
+                 #		print(tmp)
+                 aov_res = anova(lm(value~species2+treatment2, tmp));
+                 return(unlist(aov_res[,-1]))
+               }
+))
+
+tmp2 = tibble(value=reshape2::melt(m2[1,])$value, species2,treatment2);
+aov_res2 = anova(lm(value~species2+treatment2, tmp2));
+labels2 = apply(expand.grid(rownames(aov_res2), c("SS", "MeanSq", "F", "pvalue")), 1, paste, collapse="_") 
+
+res2 = data.frame(res2)
+colnames(res2) <- labels2
+
+
+# Adjust pvalue
+for (i in grep("pvalue", colnames(res2))) {
+  adj_header = paste(colnames(res2)[i], "adj", sep=".")
+  res[,adj_header] = p.adjust(res2[,i], method="BH")
+}
+
+res2 = sapply(res2, round, 4)
+rownames(res2) <- rownames(m2)
+
+# If the variance is zero set the results to NA
+res2[apply(m2, 1, var)==0,] <- NA
+
+res2<- as.data.frame(res2) %>% rownames_to_column(., var="Orthogroup")
+
+stvariance2<-as_tibble(res2) %>% dplyr::select(c(Orthogroup,species2_SS,treatment2_SS,Residuals_SS))
+
+stvariance2<-stvariance2 %>% rowwise() %>% mutate(species_var=species2_SS/(species2_SS+treatment2_SS+Residuals_SS),treatment_var=treatment2_SS/(species2_SS+treatment2_SS+Residuals_SS))
+stvariance2<-stvariance2 %>% rowwise() %>% mutate(speciesdom=(species_var+treatment_var)>=0.75 && species_var>=2*treatment_var)
+stvariance2<-stvariance2 %>% rowwise() %>% mutate( treatmentdom= (species_var+treatment_var)>=0.75 && treatment_var>+2*species_var)
+
+stvariance2<-stvariance2 %>% rowwise() %>% mutate(class= case_when(speciesdom ==TRUE & treatmentdom ==FALSE ~ "SVG",treatmentdom ==TRUE & speciesdom ==FALSE ~"TVG",treatmentdom ==FALSE & speciesdom ==FALSE ~"other"))
+
+group_colours<-c(other="grey",SVG="#F8766D",TVG="#00BFC4")
+Variance_explained2<-stvariance2 %>% ggplot()+geom_point(aes(species_var,treatment_var,col=class))+ scale_color_manual(values=group_colours) +xlab("Proportion of variance across species") + ylab("Proportion of variance across tissue")
+
+Absolute_variance2<-stvariance2 %>% ggplot()+geom_point(aes(species2_SS,treatment2_SS,col=class))+ scale_color_manual(values=group_colours) +xlab("Species Sum of Squares") + ylab("Tissue Sum of Squares")
+
+stvariance2<-stvariance2 %>% left_join(Orthologs_blast)
+
+m2<- m2 %>% tibble::rownames_to_column(., var="Orthogroup")
+m4<-stvariance2 %>% select(Orthogroup,class,Common_blast)
+m2<-m2 %>% left_join(m4)
+
+m2_keep <- m2
+m2<-reshape2::melt(m2) %>% rename(expression=value)
+m2<-m2 %>% separate(variable, c("species","tissue"),sep="_")
+
+m2<-m2 %>% mutate(species=str_replace(species,"\\."," ")) %>% left_join(Orthologs2, by=c("Orthogroup","species"="Species"))
+
+genes_to_trees<-nodes_ace %>% select(gene_tree, sequence_ids) %>% mutate(Gene=as.character(sequence_ids)) %>% select(-sequence_ids)
+genes_to_trees<-genes_to_trees %>% na.omit()
+
+species_variable<-m2 %>% filter(class=="SVG") %>% left_join(genes_to_trees)
+species_variable_subset<-species_variable %>% filter(gene_tree!="NA")
+
+treatment_variable<-m2 %>% filter(class=="TVG") %>% left_join(genes_to_trees)
+treatment_variable_subset<-treatment_variable %>% filter(gene_tree!="NA")
+
+#stvariance2 %>% filter(class=="SVG") %>% .$Orthogroup %>% fishertest(.,"BP")
+
+#stvariance2 %>% filter(class=="TVG") %>% .$Orthogroup %>% fishertest(.,"BP")
+
+Orthologs2<-Orthologs2 %>% left_join(genes_to_trees) 
+Orthologs_tree<-Orthologs2 %>% na.omit %>% group_by(Orthogroup) %>% summarise(gene_tree = paste(unique(gene_tree), collapse=", "))
+
+readr::write_csv(treatment_variable, "Supplementary_Data/Supplementaryfile4.csv", na = "NA")
+readr::write_csv(species_variable, "Supplementary_Data/Supplementaryfile5.csv", na = "NA")
+
+```
+
+(ref:SOFT-plot) Results of Strict Ortholog Filtering of Trees analyses. Top row: results using TPM10K expression values; Bottom row: results using TPM10K expression ratios. For both analyses of expression variance explained by species and tissue, we identified highly species-variable genes (SVG, red) and highly tissue-variable genes (TVG, blue). In SVGs, the proportion of variance explained by species is two times greater than that explained by tissues; while in TVGs the proportion of variance explained by tissues is two times greater than that explained by species. All SVGs and TVGs are genes for which both species and tissue explain greater than 75% of variance. A. PCA plot of expression values (TPM10k) of `r res %>% nrow()` strict ortholog genes, showing a species dominated clustering pattern. B.  The proportion of expression variance explained by species (x-axis) versus the proportion of expression variance explained by tissues (y-axis), using TPM10K expression values. C. PCA plot of expression ratios of `r res2 %>% nrow()` strict ortholog genes, showing a tissue dominated clustering pattern.  D. The proportion of expression variance explained by species (x-axis) versus the proportion of expression variance explained by tissues (y-axis), using expression ratios. Abbreviations: Gasdev = developing gastrozooid, Necdev = developing nectophore, Palmat = mature palpon, Pne = pneumatophore, Gasmat = mature gastrozooid.
+
+```{r SOFT-plot, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap='(ref:SOFT-plot)', fig.align='center'}
+
+### Files used to make figure in illustrator:
+
+#pdf(file = "figures/plot_pca_ortholog2.pdf", width=6, height=4)
+#plot_pca_ortholog2
+#dev.off()
+#pdf(file = "figures/plot_pca_ortholog.pdf", width=6, height=4)
+#plot_pca_ortholog
+#dev.off()
+#pdf(file = "figures/Variance_explained.pdf", width=7, height=7)
+#Variance_explained
+#dev.off()
+#pdf(file = "figures/Variance_explained2.pdf", width=7, height=7)
+#Variance_explained2
+#dev.off()
+
+knitr::include_graphics("figures/SOFT_analyses.pdf",auto_pdf = getOption("knitr.graphics.auto_pdf", FALSE))
+
+
+```
+
+Most comparative studies of gene expression focus exclusively on strict 1:1 orthologs, requiring an assessment of orthology across all species. We call this type of analysis Strict Ortholog Filtering of Trees (SOFT), as it limits analyses to a subset of genes with very specific evolutionary histories. Following this approach, we used Orthofinder 2 (v2.4.0) [@emms2019orthofinder] to identify a set of `r Orthologs2$Orthogroup %>% unique() %>% length()` strict orthologs for four of the best sampled species (*Agalma elegans*, *Bargmannia elongata*, *Frillagalma vityazi*, and *Nanomia bijuga*), of which `r stvariance %>% nrow()` orthologs had expression values in four tissues: gastrozooids (developing and mature), nectophores (developing), palpons (mature), and the pneumatophore. Expression values were compared across all of the species. We found that using TPM10K expression values the average behaviour of all orthologs favored a species-dominated clustering pattern (Fig. \@ref(fig:SOFT-plot)A). Following Breschi et al. @breschi2016gene (see methods), we used linear models to identify the proportion of variance that could be explained by species or tissue (Fig. \@ref(fig:SOFT-plot)B), finding out of `r stvariance  %>% nrow()` orthologs, `r stvariance %>% filter(class=="SVG") %>% nrow()` species-variable genes (SVG), and `r stvariance %>% filter(class=="TVG") %>% nrow()` tissue-variable genes (TVG). 
+
+The strong species-dominated clustering observed when comparing expression values directly may be due to differences in counting efficiency between species, especially as reference transcriptomes were used [@dunn2013phylogenetic]. To control for this, we used ratios of expression values, using TMP10K expression values of the most commonly sampled zooid, mature gastrozooid, as the denominator [@dunn2013phylogenetic]. Using expression ratios, the average behaviour of all orthologs favored more tissue-dominated clustering pattern (Fig. \@ref(fig:SOFT-plot)C). Using linear models, we identified, out of `r stvariance2  %>% nrow()` orthologs, `r stvariance2 %>% filter(class=="SVG") %>% nrow()` species-variable genes (SVG), and `r stvariance2 %>% filter(class=="TVG") %>% nrow()` tissue-variable genes (TVG) (Fig. \@ref(fig:SOFT-plot)D). GO terms found to be enriched among TVG include embryonic morphogenesis, embryo development, cartilage development, and a number of metabolic and biosynthetic processes. Meanwhile, SVG were enriched in GO terms such as cellular response to stress, DNA repair and cell cycle processes. A list of tissue variable and species variable genes can be found in supplementary files 4 and 5 respectively.  
+
+**Species Tree Edge Extraction and Layover** 
 
 ```{r plot_tree, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE}
 
-change<-function(col_value,nhx){
+change<-function(col_value1, col_value2,nhx){
   parents = nhx@phylo$edge[,1]
   children = nhx@phylo$edge[,2]
   edge_length=nhx@phylo$edge.length
   df = data.frame(
     parent=parents,
     node=children,
-    edge_num=round((as.numeric( pull(nhx@data, col_value)[children] )-as.numeric( pull(nhx@data,col_value)[parents] ))/edge_length,2)
+    edge_num=round((((pull(nhx@data, col_value1)[children] +1 )/(pull(nhx@data, col_value2)[children]+1))-( (pull(nhx@data,col_value1)[parents]+1)/(pull(nhx@data,col_value2)[parents] +1)))/edge_length,2)
     )
   return(df)
 }
@@ -1438,114 +1596,61 @@ p<-p+geom_text(aes(label=round(tips$col_value[[8]],3)),vjust=4.5,hjust=1, size=3
 return(p)
 }
 ```
-In order to compare expression patterns for each zooid across siphonophore species, we used transcriptome and genome data from `r species_tree$tip.label %>% length()` cnidarian species to generate a total of `r gene_trees %>% length()` gene trees, of which `r gene_trees_ace_calibrated[!is.na(gene_trees_ace_calibrated)] %>% length()` gene trees passed filtering criteria. We used Orthofinder [@emms2019orthofinder] to reconcile the species tree and the gene trees and annotate each gene tree node as either a speciation or duplication events (Fig. \@ref(fig:methods-comp), step 1). Pruned and unpruned calibrated gene tree files are available as supplementary data. The number of genes represented in these gene trees is shown in table \@ref(tab:summarize-libraries). The internal nodes on these gene trees consist of `r nodes_ace %>% filter(is.na(species) & Ev=="S") %>% nrow()` speciation events and `r nodes_ace %>% filter(is.na(species) & Ev=="D") %>% nrow()` duplication events. Expression values, as transcripts per million 10K (TPM10K, see methods), were mapped to the tips of the gene trees (Fig. \@ref(fig:methods-comp), step 2), and maximum likelihood trait values were reconstructed at the nodes (Fig. \@ref(fig:methods-comp), step 3). Changes in expression across branches were calculated based on the difference between parent and child nodes, scaled by the branch length (Fig. \@ref(fig:methods-comp), step 4) [@dunn2018pairwise]. We focused on expression in a subset of zooids and tissues that are common across the sampled species: gastrozooids (developing and mature), nectophores (developing), palpons (mature), male and female gonodendra, and the pneumatophore. An exemplar gene tree, for Wnt family genes, with expression values from two zooids mapped at the nodes and tips is shown in figure \@ref(fig:wnt-plot).  
 
-(ref:methods-comp) Methods used to identify changes in expression across branches in gene trees. In step 1, we have labelled each of the nodes in the siphonophore phylogeny, and identified equivalent speciation nodes across every gene tree (an exemplar is shown here). Step 2, we map expression values to the tips (TPM10K). Step 3, reconstruct ancestral trait expression values at all nodes where expression data is available. Step 4, we calculate scaled change in expression across branches and divide by the branch length. Branch length is calibrated to the species tree branch lengths. Step 5, we identify branches in gene trees that correspond to equivalent branches in the species tree. There may be more than one branch in a gene tree that corresponds to the same branch in the species tree.
+For our Species Tree Edge Extraction and Layover (STEEL) analyses (see Fig. \@ref(fig:methods-comp) and methods), we used transcriptome and genome data from `r species_tree$tip.label %>% length()` cnidarian species to generate a total of `r gene_trees %>% length()` gene trees, of which `r gene_trees_ace_calibrated[!is.na(gene_trees_ace_calibrated)] %>% length()` gene trees passed filtering criteria (see Methods). We used Orthofinder 2 [@emms2019orthofinder] to reconcile the species tree and the gene trees and annotate each gene tree node as either a speciation or duplication events. The number of genes represented in these gene trees is shown in Table \@ref(tab:summarize-libraries). The internal nodes on these gene trees consist of `r nodes_ace %>% filter(is.na(species) & Ev=="S") %>% nrow()` speciation events and `r nodes_ace %>% filter(is.na(species) & Ev=="D") %>% nrow()` duplication events. 
 
-```{r methods-comp, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, out.height='0.7\\textheight', out.width='0.7\\textheight', fig.cap='(ref:methods-comp)', fig.align = 'center'}
+Expression values were mapped to the tips of the gene trees, and ancestral values were inferred at internal nodes with maximum likelihood. Changes in expression across branches were calculated based on the difference between parent and child nodes, scaled by the branch length [@dunn2018pairwise]. We focused on expression in a subset of zooids and tissues that are common across the sampled species: gastrozooids (developing and mature), nectophores (developing), palpons (mature), and the pneumatophore. The distribution of expression changes along species-equivalent branches are shown in figure \@ref(fig:changes-branches). To examine if expression values in our dataset evolve under Brownian Motion (BM), we simulated data set of random expression values with empirically derived mean and standard-deviation values for each gene tree. Under this model, expression variance accumulates among linages on the gene tree as a function of time, and is used as a model of evolution under drift, as well as some forms of natural selection [@felsenstein1973maximum;@revell2008testing;@revell2008phylogenetic]. 
 
-knitr::include_graphics("figures/Methods_figure.pdf")
+As with the SOFT analyses, we investigated the impact of counting efficiency on our comparative analyses. We used the TPM10K values at the tips and nodes to calculate expression ratios and calculated changes in expression ratios across a branch for pairs of tissues, using the mature gastrozooid values as the denominator. The distribution of expression ratio changes along species-equivalent branches (branches in the gene tree that correspond to equivalent branches in the species tree, and are descended from speciation events) are shown in figure \@ref(fig:changes-branches2). We find the variance of change across a given species-equivalent branch is considerably higher for raw TPM10K values as compared with ratios of expression (Fig.\@ref(fig:variance-structure), Fig.  \@ref(fig:variance-structure2)). We also identified the number of gene tree branches that have a negative (change <= -2), positive (change >= 2) or neutral (change > -2 and < 2) change (Fig.\@ref(fig:neg-pos)). For each species-equivalent branch, we find more negative and positive branches than neutral branches when TPM10K values are used alone, while for expression ratios, we find that the majority of branches show no change across the branch. This suggests that as for the SOFT analyses, counting efficiency has a large impact on expression change and in turn leads to large gene/branch specific signal. For expression ratios, these results suggest that the vast majority of branches show close to 0 (neutral) change across the branch, suggesting that for closely related genes, expression ratios tend not to differ. 
 
-```
+(ref:neg-pos) Number of branches with negative, positive or neutral changes across species-equivalent branches. Top panel: species phylogeny with branch IDs given as letters. Bottom left panel: changes of TPM10K expression across each of the species-equivalent branches (IDs correspond to branch IDs shown in the species tree); bottom right panel: changes of expression ratios across species equivalent branches. Neutral change (green) is defined as <= 2 and >= -2, negative change (red) is defined as <-2, and positive change (blue) is defined as > 2. GasdevGasmat = developing gastrozooid / mature gastrozooid, NecdevGasmat = developing nectophore / mature gastrozooid, PalmatGasmat = mature palpon / mature gastrozooid, PneGasmat = Pneumatophore / mature gastrozooid. 
 
-We first considered the evolutionary change in expression along branches in the gene tree that correspond to branches in the species tree. These are identified as gene tree branches that have parent and child nodes that are both speciation events and that correspond to speciation events and branches in the species tree (Fig. \@ref(fig:methods-comp), step 5). This method enables the selection of specific branches within gene trees that are equivalent to branches within the species tree, and are thus comparable with one another across all gene trees. Unlike a strict 1:1 ortholog approach, this approach considers equivalent branches that are descended from speciation events, but that have more complex evolutionary histories. For example, due to deeper gene duplication events, gene trees often contain multiple branches that correspond to the same branch in the species tree (Fig. \@ref(fig:methods-comp), step 5). Our method allows us to consider all of these branches. Strict ortholog methods would discard some or all data impacted in this way by duplication events. Each speciation node in a gene tree is assigned an identifier that corresponds to the equivalent node in the species phylogeny. Each branch in the species tree is given a unique letter, as shown in figure \@ref(fig:changes), and the corresponding branches in gene trees are given the same letter. A simulated data set of random expression values was also obtained by using a Brownian Motion (BM) model with empirically derived mean and standard-deviation values for each gene tree. Under this model, expression variance accumulates among linages on the gene tree as a function of time, and is used as a model of evolution under drift, as well as some forms of natural selection [@felsenstein1973maximum;@revell2008testing;@revell2008phylogenetic].
+```{r neg-pos, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=8, fig.height=10, fig.cap='(ref:neg-pos)', fig.align='center'}
 
-```{r changes, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap="Mean changes along branches across all gene trees that correspond to branches in the species tree, error bar is one standard deviation. Top panel: species phylogeny with branch IDs given as numbers. Lower panel: Distribution of changes along a branch in a gene tree, showing mean change in the empirical dataset and in the BM simulation. Branch refers to the branch ID in the species tree. Treatment type is coded in colour, Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.scap="Mean changes along branches across all gene trees that correspond to branches in the species tree, error bar is one standard deviation.", fig.align='center'}
+Changes_raw<-edges_tidy %>% filter(treatment %in% c("Gasdev", "Gasmat", "Pne", "Necdev", "Palmat")) %>% group_by(S_new, treatment) %>% dplyr::summarise(Neutral=sum(change<2 & change >-2), Positive=sum(change>=2), Negative=sum(change<=-2)) %>% gather(c(Neutral,Positive,Negative), key = "value", value = "number") %>% ggplot()+geom_point(aes(treatment, number, col=value))+facet_wrap(~S_new) + xlab("") + ylab("Number of branches")+ggtitle(label="TPM10K expression values") + theme(plot.title = element_text(hjust = 0.5)) + theme(axis.text.x=element_text(angle = 30, hjust = 1)) + ylim(0,1500)
 
-layout<-rbind(c(1,1,NA),c(2,3,4))
+Changes_ratio<-edges_tidy %>% filter(treatment%in%c("GasdevGasmat", "PneGasmat", "NecdevGasmat", "PalmatGasmat")) %>% group_by(S_new, treatment) %>% dplyr::summarise(Neutral=sum(change<2 & change >-2), Positive=sum(change>=2), Negative=sum(change<=-2)) %>% gather(c(Neutral,Positive,Negative), key = "value", value = "number") %>% ggplot()+geom_point(aes(treatment, number, col=value))+facet_wrap(~S_new) + xlab(" ") + ylab("")+ggtitle(label="Expression ratios") + theme(plot.title = element_text(hjust = 0.5)) + theme(axis.text.x=element_text(angle = 30, hjust = 1)) 
 
-grid.arrange(tree_reference,branch_change,sim_branch_change,leg, bottom="Branch",widths = c(2,2,0.5),layout_matrix = layout)
+legend4<- get_legend(Changes_raw) 
 
-```
+Changes_raw<- Changes_raw +guides(color=FALSE)
+Changes_ratio<-Changes_ratio +guides(color=FALSE)
 
-The distribution of expression changes along branches in gene trees that correspond to equivalent branches in the species tree are shown in figure \@ref(fig:changes). The variance structure of the empirical data matches that of the simulated data (Fig. \@ref(fig:variance-structure)), suggesting that the size of standard deviation of change around the mean that is observed in figure \@ref(fig:changes) is a function of the underlying structure of the tree and the ancestral trait reconstruction methods that were used. High variance is especially pronounced in branches in the gene tree that correspond to K and L that have a shared parent node and lead to sister taxa *Nanomia bijuga* and *Agalma elegans* (Fig. \@ref(fig:variance-structure)). These two taxa are the only sister tip values that were sampled in this study. The mean values of change along branches do, however, differ from the BM model (Fig. \@ref(fig:changes)). Using linear models we find that expression change along branches in gene trees that correspond to branches in the species tree can be explained by significant differences among zooids/the pneumatophore, branches, and the interaction of the two (p < 2.2e-16, p = 2.319e-13, p < 2.2e-16, respectively, two-tailed anova). The BM model, based on simulated values on the gene trees under BM (p=0.4438, p=0.9829, p=0.4694), and also based on random reshuffling of changes on branches (p=0.31218, p=0.06787, p=0.0.54698), show that expression change along branches in gene trees that correspond to branches in the species tree cannot be explained by significant differences among zooids/the pneumatophore, branches, and the interaction of the two. 
+layout4<-rbind(c(1,1,NA),c(2,3,4))
 
-Global patterns of expression change across all branches and tissues/zooids provides perspective on potential linage-specific changes in expression in each zooid/tissue. These results point to a subset of branches in gene trees for particular zooids with large increases or decreases in expression across the branch. These patterns were particularly strong for palpons, where on average changes in expression were highly negative across branches leading to the clade containing *Nanomia bijuga* and *Agalma elegans*, while on average changes in expression were highly positive across branches leading to *Frillagalma vityazi*. We identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% nrow()` gene tree branches in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Palmat") %>% .$gene_tree %>% unique() %>% length()`gene trees corresponding to branch J (branch leading to *Frillagalma vityazi*, fig \@ref(fig:changes)) with large (>10) positive changes in expression across the branch. Among these, we identified several gene families of interest that show large lineage specific increases in expression in Palpons, including genes involved in patterning and development such as Wnt receptor Frizzled-4, Wnt ligand Wnt2, and homeobox gene Otx-2. For the pneumatophore, we identified `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% nrow()` gene tree branches corresponding to branch J in `r edges_tidy %>% filter(S_child=="26" & change > 10 & treatment=="Pne") %>% .$gene_tree %>% unique() %>% length()` gene trees with large (>10) positive changes in expression across the branch, including homeobox proteins SAX-1 and Hox-B8 - the latter gene showed low or no TPM10K expression in *Nanomia bijuga*, *Agalma elegans*, and *Apolemia lanosa* pneumatophores and high expression in *Frillagalma vityazi* pneumatophores. The full list of branches and changes in expression across the branch and tissue/zooid are available in supplementary file 3. 
-
-```{r output_supp, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE}
-
-new_edges <- edges_tidy %>% left_join(.,S_new, by=c("S_child"="S")) %>% dplyr::select(gene_tree, S_new, treatment, change, blast_hit) %>% dplyr::rename(.,c(Branch_ID=S_new,Zooid=treatment))
-
-readr::write_csv(new_edges, "Supplementary_Data/Supplementaryfile3.csv", na = "NA")
-
-#output trees - to be re run for any/all re-runs of prep files
-
-# for(tree in 1:length(gene_trees_ace_calibrated_pruned)){
-# if(!is.na(gene_trees_ace_calibrated_pruned[[tree]])){
-# ape::write.tree(gene_trees_ace_calibrated_pruned[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees_pruned/",gene_trees_ace_digests[[tree]],".txt"))
-# }
-# }
-# 
-# for(tree in 1:length(gene_trees_ace_calibrated)){
-# if(!is.na(gene_trees_ace_calibrated[[tree]])){
-# ape::write.tree(gene_trees_ace_calibrated[[tree]]@phylo,file=paste0("Gene_trees/Gene_trees/",gene_trees_ace_digests[[tree]],".txt"))
-# }
-# }
+grid.arrange(tree_reference, Changes_raw,Changes_ratio,legend4, bottom="Tissue",widths = c(2,2,0.5),layout_matrix = layout4)
 
 ```
 
-Next, we were interested in branch level patterns of expression, focusing on whether change in expression across the same branch in a gene tree is correlated between different zooids. We investigated the correlation of changes across particular branches (that correspond to species tree branches) within gene trees among different zooids/the pneumatophore (Figs. \@ref(fig:correlations)). For change across the same branch within a gene tree that corresponds to a particular branch in the species tree, there is a positive correlation between pairwise comparisons of zooids/the pneumatophore. In particular, changes across all branches are highly correlated between developing and mature gastrozooids. Changes in expression across the same branch were also highly correlated between gastrozooids and palpons, especially so across branches corresponding to branch K (\@ref(fig:changes), top panel) in the species tree (branch leading to *Agalma elegans*).  Meanwhile, changes across all branches are much less correlated between any zooid/the pneumatophore and both the male or female gonodendra. These results suggest that with the exception of male and female gonodendra, in general changes in expression across gene tree branches are highly correlated among zooids - a large positive change in expression in one zooid across a gene tree branch will also typically see a large positive change in expression in another zooid across the same branch. By contrast, in the simulated BM dataset, we found that there was no correlation of changes across branches within gene trees among any zooid/tissue.
+Out of a total of `r edges_tidy_directional %>% .$gene_tree %>% unique %>% length()` final gene trees considered in these analyses, `r edges_tidy_directional %>% filter(change_direction=="Neutral") %>% .$gene_tree %>% unique %>% length()` gene trees contained branches with neutral changes, `r edges_tidy_directional %>% filter(change_direction=="Positive") %>% .$gene_tree %>% unique %>% length()` gene trees contained branches with positive changes, and `r edges_tidy_directional %>% filter(change_direction=="Negative") %>% .$gene_tree %>% unique %>% length()` gene trees contained branches with negative changes. Expression ratio changes across species-equivalent branches from all gene trees is available in supplementary file 6 (note: in this file 'blast hit' is the most frequent blast hit for the gene tree, gene identity should still be confirmed for each gene, particularly in large gene trees).
 
-```{r correlations, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap="Siphonophore phylogeny and pairwise correlation of changes across a branch among different pairs of zooids/the pneumatophore. Correlation of changes from node to tip are shown in the plot to the right of the phylogeny. Changes between two nodes are shown adjacent to the child node. Color indicates correlation between 0.9 (red) and 0.5 (green). Treatment type is coded in colour along the x-axis, Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.align='center'}
+The vast majority of gene trees contain species-equivalent branches with neutral changes, including a number of transcription factors and morphogenic signalling pathway genes. For example, in ratios of developing and mature gastrozooids, among the relevant species-equivalent branches in the Wnt gene phylogeny, changes are neutral across Wnt3 and Wnt2 branches, with the exception of a slight positive change across the branch leading to a *Diphyes dispar* Wnt2 paralog, suggesting a higher relative expression of this gene in the developing gastrozooid of *D. dispar* (Fig. \@ref(fig:wntplot)). For all zooid ratios, we find very consistent Wnt3 expression patterns with neutral or very small positive or negative changes in expression ratio across the branches. Indeed, across all cnidarians examined, Wnt3 has consistent localised expression at the oral pole, likely playing a role in axis formation and maintenance [@bagaeva2019wnt; @guder2006wnt; @hensel2014lineage; @hobmayer2000wnt; @momose2008maternally; @nawrocki2013expression; @sanders2015patterns]. However, for Pneumatophore/Gastrozooid ratios, some large changes are seen across branches K and L, leading to a *Agalma elegans* and *Nanomia bijuga* Wnt2 paralog respectively, likewise for Palpon/Gastrozooid a large change is seen across branch J, leading to a *Frillagalma vityazi* Wnt2 paralog. In *Nematostella vectensis* and *Hydractinia echinata*, Wnt2 is expressed in the middle of the polyp [@hensel2014lineage; @kusserow2005unexpected]. Without more detailed spatial expression patterns, it is difficult to know whether these differences in expression between species reflect species-specific differences in axial patterning and morphogenesis, such as an expansion or reduction of the expression domain. 
 
-knitr::include_graphics("Figures/Correlations.pdf")
-
-```
-
-We were then able to identify instances of branches in gene trees where change in expression across the branch is negatively or positively correlated among different zooids. One example of possible lineage and zooid specific changes in expression across a branch is found in a putative hydrozoan specific actinoporin-like gene family, with closest blast similarity to Auger and Cone snail tereporin/coroporin toxins. In this toxin-like family, we were able to identify one clade (clade Y, Fig. \@ref(fig:venom-plot), Fig. \@ref(fig:fullvenom-plot)) with three branches corresponding to branches K, L and I in the species tree. The branches that correspond to I and K, leading to a *Diphyes dispar* and *Agalma elegans* genes respectively, both have large increases in mature gastrozooid expression across the branch, while the branch that corresponds to branch L (leading to *Nanomia bijuga*) has a large decrease in expression across the branch in mature gastrozooids and an independent large increase in expression for the same branch in mature palpons. For all other zooids/tissues the expression at the tips is close to 0, with only small changes in expression across the branch. In *Nanomia bijuga* the gene 976500 in Clade Y is significantly differentially expressed in mature palpons as compared to mature gastrozooids (log2 Fold Change 6.83224, Bonferroni adjusted p-value 0.000567528). These results point towards a lineage and zooid specific change in expression across branch L leading to an actinoporin-like gene homolog in *Nanomia bijuga*.
-
-This gene family shows a complex history of duplication events, with several deep duplication events prior to the divergence of siphonophores, and multiple species-specific duplication events. The exact function of these toxin-like genes is not known or characterized, however they appear to be found predominantly in gastrozooids and/or palpons. In the five duplicated *Physalia physalis* genes, expression is highest in mature gastrozooids relative to developing and mature tentacular palpons (the zooid that bears the tentacle), as well as the developing tentacle. The full phylogeny of all available hydrozoan genes is available in supplementary figure \@ref(fig:fullvenom-plot). The three *Clytia hemisphaerica* homologs are highly expressed specifically in the polyp head, and whole male and female medusa (blast search on Marine Invertebrate Models Database http://marimba-test.obs-vlfr.fr/, XLOC_029306, XLOC_013838, XLOC_029344).
-
-(ref:venom-plot) Pruned maximum likelihood gene tree of a putative actinoporin-like gene family found in siphonophore species with expression values (TPM10K) at the tips and nodes. Mature gastrozooid expression in orange (above node), palpon expression in yellow (below node). Changes in expression across the branch are found in black boxes along the branch, orange = mature gastrozooid, yellow = mature  palpon. Red circles are duplication nodes and blue circles are speciation nodes.
-
-```{r venom-plot, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, fig.height=15, fig.width=15, fig.cap='(ref:venom-plot)', fig.align = 'center'}
-
-#pull gene tree digest
-
-venom<-edges_tidy[grep("Tereporin-Ca1",edges_tidy$blast_hit),] %>% .$gene_tree %>% unique()
-
-nhx_wider<-gene_trees_ace_calibrated[gene_trees_ace_digests==venom][[1]]
-venom_p<-nhx_wider %>% ggtree()+geom_nodepoint(aes( color=Ev ))+geom_tiplab() +xlim(c(0,0.5))
-nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==venom][[1]]
-tips1<-pull(nhx@data,"Gasmat")
-tips2<-pull(nhx@data,"Palmat")
-p1<-nhx %>% ggtree()+ geom_tiplab(aes( label=phy_node_names),pch=1, hjust=-0.1)+geom_nodepoint(aes( color=Ev )) +xlim(c(0,0.5))
-p1<-p1+geom_text(aes(label=round(tips1,2)),vjust=-1,hjust=1, size=3, col="#F97F06")
-p1<-p1+geom_text(aes(label=round(tips2,2)),vjust=1.5,hjust=1, size=3, col="#F7D114")
-
-edge <- change("Gasmat",nhx)
-edge2<- change("Palmat",nhx)
-p2<- p1 %<+% edge + geom_label(aes(x=branch, label=edge_num),label.size = 0.01,size=3, col="#F97F06")  
-p3 <- p1 %<+% edge2 + geom_label(aes(x=branch, label=edge_num),label.size = 0.01,size=3, col="#F7D114")
-
-##used the output from above to make the toxin plot
-
-knitr::include_graphics("Figures/Toxin_plot.pdf",auto_pdf = getOption("knitr.graphics.auto_pdf", FALSE))
-
-Physalia<-data.frame(treatment=e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@treatment, individual=e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@individual)
-
-venom_Physalia <- e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@tpm[rownames(e$`HWI-ST625-73-C0JUVACXX-7-TTAGGC`@tpm) %in% c("344760","344764","388102","388106","368190"),] %>% t %>% as.data.frame()
-
-#plot of counts of all Physalia genes
-#venom_physalia %>% bind_cols(.,Physalia) %>% gather(1:5,key=gene,value=count) %>% ggplot()+geom_point(aes(x=treatment,y=log(count+1), col=gene))
-
-```
+We also looked at gene trees with species-relative branches that have very large changes ( 5 < change < -5), representing putative lineage-specific expression patterns. In Frizzled5/8, Wnt4, and homeobox (putatively Hox-B8) gene-trees, for example, we found very large positive changes in ratios of developing gastroozoid/mature gastrozooids across the same species-equivalent branches, J (leading to *Frillagalma vityazi*) and D (leading to Euphysonectae, the clade comprising *A. elegans*, *N. bijuga*, and *F. vityazi*). In Frizzled5/8 for developing nectophores/gastrozooids we also see a large positive change across branch L (leading to *Nanomia bijuga*) and J (leading to *Frillagalma vityazi*) and negative change across branch K (leading to *Agalma elegans*). In ratios of developing nectophores/gastrozooids, we also found very large positive changes in branch J for Wnt-7b-like, Wnt-4, (putatively) Hox-B8 and NKX1-2. Likewise in pneumatophore/gastrozooid ratios, we also find large positive changes in branch J and L for Frizzled5/8, and a negative change across branch K. Across J, we also see positive changes in pneumatophore/gastrozooid in Hox-B8 and NKX1-2. Finally, for branch K, we see large positive changes in Wnt4 and Wnt7b-like. Many of these genes have been shown to have specific expression domains patterning cnidarian bodies [@hensel2014lineage; @kusserow2005unexpected; @ryan2007pre; @sinigaglia2013bilaterian], and further detailed expression analyses of these genes and others within the zooid are required to determine whether the patterns identified here reflect differences in expression domain between species and zooid. 
 
 ## Discussion {-}
 
-Colonial animals, consisting of genetically identical modules that are physically and physiologically connected, can be found across the metazoan tree of life [@hiebert2020coloniality]. Functional specialization has evolved multiple times within colonial groups, and siphonophores in particular are suggested to have the greatest diversity of functionally specialized zooids [@Beklemishev1969;@hiebert2020coloniality]. Functionally specialized siphonophore zooids have been likened to animal organs, with each functionally specialized zooid possessing distinct cell-types and performing distinct roles within the colony [@mackie1963]. While this analogy works well for understanding the function of zooids within the colony as a whole, the analogy falls short in terms of explaining the evolutionary origin and development of these biological units: functionally specialized zooids are evolutionarily homologous to free living organisms, they are multicellular, possess distinct cell types, and show regional subfunctionalization [@church2015histology;@Mackie1960;@totton1965synopsis]. While the developmental mechanisms generating zooids are very different (they arise asexually from a growth zone), the evolutionary processes acting on zooids may be similar to those acting on other modular biological units such as cell type, tissue, and organ [@hiebert2020coloniality]. Understanding the cellular and molecular processes underlying the patterning and molecular function of functionally specialized cnidarian zooids remain an open biological question, and in recent years there has been a focus in particular on differential gene expression patterns found in different functionally specialized zooids [@sanders2014differential; @sanders2015interspecific; @Siebert:2011gv]. In this study, we found a large number of genes that are differentially expressed within different siphonophore zooids, reflecting the distinct anatomy and function of these zooids. We were able to identify potential transcription factors that are significantly differentially expressed within particular zooids, with potential homologs found in several species, which may be interesting candidates for future study in siphonophores or related cnidarian colonial groups.     
+**Evolution of gene expression in Siphonophores** 
 
-We were also able to explore gene expression patterns in three zooid types that are unique to three species, *Physalia physalis*, *Agalma elegans*, and *Bargmannia elongata*. In siphonophores, different zooid types are typically defined based on morphological and functional differences/similarities, and on the location of the zooid within the colony (which is determined in most species by the asexual budding process in the growth zone, which gives rise to a repeating pattern of zooids along the stem) [@dunn2005complex; @dunn2006evolution; @mackie1987siphonophore; @totton1965synopsis]. Based on both morphology and development, *Physalia physalis* tentacular palpons are considered to be a distinct and unique zooid type [@munro2019morphology], and the differential gene expression data indicate that there is a clear morphological and functional difference between gastrozooids and tentacular palpons. For "yellow" and "white" gastrozooids in *Bargmannia elongata*, the differential expression data point to few morphological or functional differences between these two zooids. Through pairwise differential expression patterns between "yellow" or "white" gastrozooids and other zooids within the colony we were able to identify hundreds of genes that are significantly differentiated in one zooid and not the other. This suggests that these two gastrozooids may be distinct zooid types, although they are functionally very similar to one another. Sequencing at greater depth, and also functional work within this species may help clarify the nature of these differences. Finally, there isn't strong evidence with these data that the B palpon and gastric palpons in *Agalma elegans* are sufficiently different to constitute a novel zooid type, and these findings suggest that location within the colony is not necessarily sufficient to designate a novel zooid type. 
+We found a large number of genes that are differentially expressed across siphonophore zooids, reflecting the distinct anatomy and function of these zooids. We were able to identify potential transcription factors that are significantly differentially expressed within particular zooids, with potential homologs found in several species, which are interesting candidates for future study in siphonophores or related cnidarian colonial groups. We were also able to explore gene expression patterns in three zooid types that are unique to three species, *Physalia physalis*, *Agalma elegans*, and *Bargmannia elongata*. In siphonophores, different zooid types are typically defined based on morphological and functional differences/similarities, and on the location of the zooid within the colony (which is determined in most species by the asexual budding process in the growth zone, which gives rise to a repeating pattern of zooids along the stem) [@dunn2005complex; @dunn2006evolution; @mackie1987siphonophore; @totton1965synopsis]. Based on both morphology and development, *Physalia physalis* tentacular palpons are considered to be a distinct and unique zooid type [@munro2019morphology], and the differential gene expression data indicate that there is a clear morphological and functional difference between gastrozooids and tentacular palpons. We also identified several putative toxin genes with distinct expression profiles between these two zooids, which matches tissue-specific venom observed in other cnidarian species [@doi:10.1093/gbe/evw155; @ames2016new; @10.1093/gbe/evab081]. 
 
-In addition to investigating gene expression patterns between zooids within species, we were also able to use phylogenetic comparative methods to investigate gene expression patterns within homologous zooids across species. With the expansion of functional genomic tools, including RNA-seq and single cell sequencing methods, there is considerable interest in looking not only at how genomic variation gives rise to phenotypic diversity in a single species or organism, but also at how functional genomic variation shapes phenotypic diversity across a number (>2) of closely and distantly related species to understand broader evolutionary patterns and processes [@Brawand:2011du; @barbosa2012evolutionary; @breschi2016gene; @cardoso2019gene; @clarke2017evolutionary; @doi:10.1093/gbe/evw155; @merkin2012evolutionary; @necsulea2014evolution; @perry2012comparative;  @Levin:2016bp; @sudmant2015meta; @ma2018comparative; @yang2013organ; @zhang2014comparative; @10.1093/molbev/msz212]. The methods developed here are broadly applicable to a range of functional genomic data, in addition to existing RNA-seq data sets in other species.
+For "yellow" and "white" gastrozooids in *Bargmannia elongata*, the differential expression data point to few morphological or functional differences between these two zooids. Through pairwise differential expression patterns between "yellow" or "white" gastrozooids and other zooids within the colony we were able to identify hundreds of genes that are significantly differentiated in one zooid and not the other. This suggests that these two gastrozooids may be distinct zooid types, although they are functionally very similar to one another. Sequencing at greater depth, and also functional work within this species may help clarify the nature of these differences. By contrast, there isn't strong evidence with our data that the B palpon and gastric palpons in *Agalma elegans* are sufficiently different to constitute a novel zooid type. These findings suggest that location within the colony is not necessarily sufficient to designate a novel zooid type. 
 
-This approach presents several solutions to past limitations. We apply ancestral trait reconstruction methods to reconstruct expression values at nodes in gene trees and calculate changes across branches. This has several advantages -- we are able to take species relationships into account, and we are also able to overcome sampling issues at the tips, as expression values of different treatments can be reconstructed at deep internal nodes, even where there may be inconsistent sampling at the tips. We also propose a novel solution to identifying comparable genes across species. Where past approaches identify strict orthologs *before* conducting analyses, we use information from all genes within a gene tree regardless of their evolutionary history of duplication or speciation. Subsequently, we are then able to use information at the nodes to select branches in gene trees that correspond to particular branches in the species tree. This enables the selection of branches that are descended from speciation events, but that do not necessarily belong to gene trees where only single copy genes are found. This enables us to consider vastly more genes than we would be able to with a strict ortholog approach. Although we focus here on expression following speciation events, it is also possible to compare expression following duplication and speciation events. Finally, by using gene trees, we are able to consider expression evolution within the context of the gene phylogeny, which may differ significantly from the species phylogeny. This enables us to consider the evolution of gene expression in context, considering not only the evolutionary relationships between genes, but also between species.
+With our SOFT analyses we found that the vast majority of identified orthologs were neither exclusively species-variable or tissue-variable, however we were nevertheless able to identify a subset of either tissue- or species- variable genes. As has been observed for vertebrate organs, we find based on GO terms that identified species-variable genes tend to play a role in basic cellular functions (so-called 'housekeeping genes'), as compared to tissue-variable genes [@@breschi2016gene]. 
 
-There are, however, limitations to this approach as applied here. As with all methods that rely on mapping to reference transcriptomes rather than genomes, this approach is limited by the quality of the reference transcriptomes. Not all reference transcriptomes were sequenced to equal depth among species, and this has important effects on the presence or absence of genes from particular species within the gene tree. This not only has an effect on the representation of expression values, but also impacts the power to investigate patterns of expression among branches within a gene tree. However, with genome sequencing becoming cheaper and more readily available, the widespread availability of reference genomes will help alleviate many of these issues. Reference genomes will also improve gene models, enabling the distinction of different alleles of the same gene from paralogous genes, this in turn will improve the quality of the gene trees. 
+What can we learn from the STEEL analyses, using ratios of expression data? It's important to stress that changes in expression ratios cannot tell us about changes in expression *magnitude*. A tissue-variable gene that is either highly or lowly expressed in, for example, nectophores relative to gastrozooids in all species, may show largely neutral changes across all species-equivalent branches. The sign (positive or negative) of change provides an indication of whether expression in the child node is relatively higher in the denominator or the numerator, relative to the parent node. We find overall that most expression ratios show very little change across species-equivalent gene tree branches -- suggesting that gene expression patterns tend to be largely consistent among species. Positive or negative changes across branches, especially very large changes, across branches, represent putative linage specific shifts in expression. Whether these reflect distinct morphological or functional changes in the tissues of a particular species or clade requires further validation -- a difficulty in this system, where the species are difficult to collect and maintain in the lab.
 
-Using this gene-tree centric approach, we were able to gain insights into general patterns of change across branches in gene trees that correspond to species tree branches. We found that most evolutionary changes across a branch in a gene tree are highly correlated among different zooids/tissues, with the exception of male and female gonodendra. We were also able to investigate the magnitude of these expression changes, and identify specific lineages and zooids with large increases (and decreases) in expression across gene tree branches. On average, gastrozooids (developing and mature), nectophores and pneumatophores show few large lineage specific changes in expression across gene tree branches. Mature palpons on average have large changes across branches, pointing to lineage specific changes in expression that are specific to this zooid. The large changes in palpon expression that we find along particular branches may be associated with lineage-specific adaptations. Unlike many other zooid types such as gastrozooids or gonophores that play a more conserved role within the colony, palpons have been observed to perform a wide range of functions in different siphonophore species. These include digestion, absorption, and egestion in *Nanomia bijuga* and *Forskalia* [@mackie1963fishing], and also defense in *Physophora hydrostatica* [@totton1965synopsis]. This latter case is particularly striking -- the palpons of *Physophora hydrostatica* vigorously attack objects placed in their vicinity [@totton1965synopsis]. The lack of knowledge about morphological traits specific to palpons and the sense that they don't have a consistent narrow function can give the sense that they are not as interesting as other zooids. The expression results presented here suggest that palpons should be viewed in a very different light -- they may have greater functional diversity than previously thought and are more fundamental to siphonophore biology than has been appreciated. 
+**Challenges and solutions in the analysis of the evolution of gene expression** 
 
-Summary statistics provide a perspective of the dominant behaviour of a subset of branches within a subset of gene trees, however each gene has a unique evolutionary history as reflected in the gene tree. Using this method, we are able to focus in at the branch level to identify genes and clades of genes whose expression vary little among species for a given zooid, as well as instances of large lineage specific changes. Each gene tree is a rich resource of information of expression changes across the branches in the tree, and by focusing at a gene tree level, researchers can use these tools to understand the degree to which expression patterns of a given gene in a species may be extrapolated to another, or as an exploratory tool to identify expression patterns that may be species and possibly also zooid/tissue specific.   
+In this study we used phylogenetic comparative methods to investigate gene expression patterns within homologous zooids across species. To do this, we implemented a new approach called STEEL. Using gene trees, we considered expression evolution within the context of the gene phylogeny, which may differ significantly from the species phylogeny. We consider the evolution of gene expression in the context of a gene phylogeny, not only the evolutionary relationships between genes, but also between species. Where traditional approaches identify strict ortholog genes *before* conducting analyses, we use information from all gene copies within a gene tree regardless of their evolutionary history of duplication or speciation. Subsequently, we use information at the nodes of the gene phylogenies to select branches in gene trees that correspond to particular branches in the species tree. This approach enables the selection of branches that correspond to branches in the species tree, but that do not necessarily belong to gene trees where only single copy genes are found. We consider more genes than we would be able to with a strict ortholog approach, and additionally, we investigate expression patterns at both the tips and internal nodes of gene phylogenies. Although we focus here on expression following speciation events, it is also possible to compare expression following duplication and speciation events.
+
+Using ancestral trait reconstruction, we also overcame sampling issues at the tips of the gene and species phylogeny, as expression values of different treatments can be reconstructed at deep internal nodes, even where there may be inconsistent sampling at the tips. That is, even if expression values are missing for a given tissue and gene in a gene phylogeny, we are still able to examine expression patterns within this gene tree. By contrast, in the SOFT analyses, incomplete sampling in the expression matrix leads to the elimination of the ortholog from the analysis. 
+
+As with all methods that rely on mapping to reference transcriptomes rather than genomes, this approach is limited by the quality of the reference transcriptomes. Ratios of expression helped significantly to improve issues of differences in count efficiency among species [@dunn2013phylogenetic]. However, reference transcriptome quality also has an impact on the quality of the gene trees used for expression mapping. Not all reference transcriptomes were sequenced to equal depth among species, and this has important effects on the presence or absence of genes from particular species within the gene tree. This not only has an effect on the representation of expression values, but also impacts the power to investigate patterns of expression among branches within a gene tree. With genome sequencing becoming cheaper and more readily available, the widespread availability of reference genomes will help alleviate many of these issues. Reference genomes will also improve gene models, enabling the distinction of different alleles of the same gene from duplicated gene copies, this in turn will improve the quality of the gene trees. 
+
+**Perspectives** 
+
+With the expansion of functional genomic tools, including RNA-seq and single cell sequencing methods, there is considerable interest in looking not only at how genomic variation gives rise to phenotypic diversity in a single species or organism, but also at how functional genomic variation shapes phenotypic diversity across multiple closely and distantly related species to understand broader evolutionary patterns and processes [@Brawand:2011du; @barbosa2012evolutionary; @breschi2016gene; @cardoso2019gene; @clarke2017evolutionary; @doi:10.1093/gbe/evw155; @merkin2012evolutionary; @necsulea2014evolution; @perry2012comparative;  @Levin:2016bp; @sudmant2015meta; @ma2018comparative; @yang2013organ; @zhang2014comparative; @10.1093/molbev/msz212; @fukushima2020amalgamated]. Many of these analyses have the goal of identifying shared expression patterns among modular biological units (cell type, tissue, organ, zooid) across species, in order to identify commonalities in expression patterns among species. This is of particular interest for medically orientated fields interested in understanding the extent to which expression results can be extrapolated from one model organism to another. Within-species differential gene expression analyses, SOFT and STEEL analyses can all be useful tools for exploring common gene expression patterns among species. Another goal is to identify expression patterns in a particular biological unit that are unique to a particular species or even clade. For these questions in particular, as long as homologous tissues are available across species, STEEL analyses provide an opportunity to investigate lineage-specific expression patterns, especially where additional trait values may be mapped to gene or species phylogenies.
 
 ## Methods {-}
 
@@ -1555,23 +1660,18 @@ All scripts for the analyses are available in a git repository at https://github
 Specimens were collected in the north-eastern Pacific Ocean in Monterey Bay and, in the case of _Physalia physalis_ the Gulf of Mexico. Specimens were collected by remotely operated vehicle (ROV) or during blue-water SCUBA dives. *Physalia* specimens were collected by hand from the beach after being freshly washed on-shore by prevailing winds. Available physical vouchers have been deposited at the Peabody Museum of Natural History (Yale University), New Haven, CT. Specimens were relaxed using 7.5% MgCl~2~ hexahydrate in Milli-Q water at a ratio of 1/3 MgCl~2~ and 2/3 seawater. Zooids were subsequently dissected from the colony and flash frozen in liquid nitrogen. Colonies were cooled to collection temperatures (e.g 4 degrees C for deep sea species) while the dissections took place. Dissections took no longer than 15-20 minutes. In the case of large colonies, the stem was cut and only partial sections of the colony were placed under the microscope at a given time. Each replicate individual represents a genetically distinct colony from the same species. Replicate specimens were of an equivalent colony size, and zooid replicates were also equivalent sizes. Larger zooid types, such as gastrozooids, were sampled as a single zooid, but smaller zooids were pooled. Pooled zooids were of a comparable maturity and sampled from the same location in a single colony. 
 
 **Sequencing** \newline
-mRNA was extracted directly from tissue using Zymo Quick RNA MicroPrep (Zymo #R1050), including a DNase step, and subsequently prepared for sequencing using the Illumina TruSeq Stranded Library Prep Kit (Illumina, #RS-122-2101). 50 base-pair single-end libraries were all sequenced on the HiSeq 2500 sequencing platform. Three sequencing runs were conducted, representing three full flow cells. To avoid potential run/lane confounding effects, where possible, libraries of multiple zooids/tissue of a single individual in a species were barcoded and pooled in a single sequencing lane, and replicate lanes of zooids/tissue from different individuals of the same species were sequenced in separate runs. Additionally, two libraries were run as technical replicates across all runs and many lanes, for a total of 20 technical replicates. Sequences, along with sampling metadata, are publically available on NCBI under BioProject ID PRJNA540747.
+mRNA was extracted directly from tissue using Zymo Quick RNA MicroPrep (Zymo #R1050), including a DNase step, and subsequently prepared for sequencing using the Illumina TruSeq Stranded Library Prep Kit (Illumina, #RS-122-2101). 50 base-pair single-end libraries were all sequenced on the HiSeq 2500 sequencing platform. Three sequencing runs were conducted, representing three full flow cells. To avoid potential run/lane confounding effects, where possible, libraries of multiple zooids/tissue of a single individual in a species were barcoded and pooled in a single sequencing lane, and replicate lanes of zooids/tissue from different individuals of the same species were sequenced in separate runs. Additionally, two libraries were run as technical replicates across all runs and many lanes, for a total of 20 technical replicates. Sequences, along with sampling metadata, are publicly available on NCBI under BioProject ID PRJNA540747.
 
 **Analysis**
 
 **_Sequencing & Differential gene expression_** \newline
-Short read libraries were mapped to previously published transcriptomes (150bp paired end) [@munro2018improved] using Agalma v 2.0.0 [@Dunn:2013kw; @Guang202416], which uses a number of existing tools for transcript quantification, including RSEM (which uses Bowtie) [@langmead2009ultrafast;@li2011rsem]. Using the `agalmar` package (https://github.com/caseywdunn/agalmar), we filtered out genes that were flagged as being rRNA, and selected only protein coding genes. We also only considered genes that were greater than 0 in at least two libraries. Differential gene expression analyses, including normalization, were conducted in R, using the `DESeq2` package [@love2014moderated]. Libraries that were found to be outliers based on mean cook's distance were removed from the DESeq object and from downstream analyses and normalization. Testing for differential expression was conducted using the `results()` function in DESeq2. Genes were considered to be significantly differentially expressed if adjusted p-values (Bonferroni correction) were less than 0.05. Differential expression analyses were only conducted on zooids/tissue with two or more replicates.
+Short read libraries were mapped to previously published transcriptomes (150bp paired end) [@munro2018improved] using Agalma v 2.0.0 [@Dunn:2013kw; @guang2021revising], which uses a number of existing tools for transcript quantification, including RSEM (which uses Bowtie) [@langmead2009ultrafast;@li2011rsem]. Using the `agalmar` package (https://github.com/caseywdunn/agalmar), we filtered out genes that were flagged as being rRNA, and selected only protein coding genes. We also only considered genes that were greater than 0 in at least two libraries. Differential gene expression analyses, including normalization, were conducted in R, using the `DESeq2` package [@love2014moderated]. Libraries that were found to be outliers based on mean cook's distance were removed from the DESeq object and from downstream analyses and normalization. Testing for differential expression was conducted using the `results()` function in DESeq2. Genes were considered to be significantly differentially expressed if adjusted p-values (Bonferroni correction) were less than 0.05. Differential expression analyses were only conducted on zooids/tissue with two or more replicates.
 
-GO annotations were retrieved for each of the reference translated transcriptomes [@munro2018improved] using the PANNZER2 web server [@toronen2018pannzer2].The PANNZER2 format was modified to match the gene2GO format required for the package `topGO` [@topGO]. Gene set enrichment analyses were carried out within species using the R package `GOseq` [@young2010gene], which takes gene length into account. Over and underrepresented categories were calculated using the Wallenius approximation, and p-values were adjusted using the Benjamini and Hochberg method. Categories with an adjusted p-value below 0.05 are considered enriched. Gene set enrichment analyses were also conducted at the gene tree level, considering representative GO terms for particular gene trees. Representative GO terms were selected based on the frequency of occurrence among genes in the gene tree. As gene lengths vary among species and genes in the gene tree, the `GOseq` approach could not be used, and `topGO` was used to detect GO terms that are enriched based on Fisher's exact test. This approach assumes that each gene tree has an equal probability of having genes shared among species that are detected as differentially expressed, however results may be biased by a number of factors, including mean gene length among genes in the gene tree [@young2010gene]. 
+GO annotations were retrieved for each of the reference translated transcriptomes [@munro2018improved] using the PANNZER2 web server [@toronen2018pannzer2].The PANNZER2 format was modified to match the gene2GO format required for the package `topGO` [@topGO]. Gene set enrichment analyses were carried out within species using the R package `GOseq` [@young2010gene], which takes gene length into account. Over and underrepresented categories were calculated using the Wallenius approximation, and p-values were adjusted using the Benjamini and Hochberg method. Categories with an adjusted p-value below 0.05 are considered enriched. Gene set enrichment analyses were also conducted at the gene tree level, considering representative GO terms for particular gene trees. Representative GO terms were selected based on the frequency of occurrence among genes in the gene tree. As gene lengths vary among species and genes in the gene tree, the `GOseq` approach could not be used, and `topGO` was used to detect GO terms that are enriched based on Fisher's exact test. This approach assumes that each gene tree has an equal probability of having genes shared among species that are detected as differentially expressed, however results may be biased by a number of factors, including mean gene length among genes in the gene tree [@young2010gene]. Putative toxin genes were identified using blastp from the ToxProt dataset (http://www.uniprot.org/program/Toxins, last accessed 13 May 2021). See Supplementary Information for R package version numbers.
 
-**_Phylogenetic analysis of gene expression_** \newline
-Gene trees were generated using the transcriptomes and genomes from `r species_tree$tip.label %>% length()` species [@munro2018improved] using Agalma v 2.0.0 [@Dunn:2013kw; @Guang202416]. Following the `treefinder` step of Agalma v 2.0.0, amino acid data were exported and supplied to Orthofinder [@emms2019orthofinder] for simultaneous co-estimation of gene trees with the published maximum likelihood species tree [@munro2018improved]. Within Orthofinder, the selected multiple sequence alignment method was MAFFT [@katoh2013mafft] and maximum likelihood tree inference method was IQ-tree with the LG+F+R4 substitution model [@nguyen2015iq].
+**_TPM10K_**
 
-Phylogenetic analyses were conducted in R using `geiger`, `ape`, `phytools`, `Rphylopars`, and `hutan` [@ape2004; @doi:10.1093/sysbio/syv055; @goolsby2017rphylopars; @harmon2007geiger; @MEE3:MEE3169]. Phylogenetic trees were visualized in R using `ggtree` and `treeio` [@yu2017ggtree]. Linear models were constructed using lm(), and wilcox tests were carried out using the function wilcox.test() in base R. See Supplementary Information for R package version numbers.
-
-Gene trees were filtered to exclude trees with a length threshold >2, a root depth >5, and that had more than 0.25 branches with a default length value (that are indicative of branch length=0). Gene trees nodes were annotated as speciation events or duplication events, based on assignment by Orthofinder [@emms2019orthofinder]. Speciation nodes were subsequently assigned a node ID equivalent to the species tree node, using species tip names from the gene tree to determine the most common recent ancestor in the species tree, using the `phytools` package. Due to the use of the species-overlap method by Orthofinder, some clades of single copy genes were assigned  as speciation events, although the topology is inconsistent with the species tree. To avoid time calibration issues, due to descendant nodes being assigned the same species node ID, descendant speciation nodes with the same species node ID were marked as null, and gene trees with nodes greater than 0.3 null nodes per internal node were excluded -- indicating widespread topological differences with the species tree. Tips without expression values were pruned out of the tree. Gene trees with fewer than three expression values at the tips were discarded, retaining only trees with three or more values. Additionally, only trees with one or more speciation events were retained, as speciation events are used for time calibrations. The gene trees were then time calibrated to the species tree using `chronos()` in the `ape` package, so that the branch lengths were scaled to the same equivalent length across all gene trees [@ape2004]. Some gene trees could not be calibrated against the node constraints from the species tree and were discarded. 
-
-For comparitive expression analyses, expression values were normalized using a new method we call transcripts per million 10K (TPM10K). For gene $i$ of a given species, TPM is typically calculated as [@li2009rna]:
+For all comparative expression analyses, expression values were normalized using a new method we call transcripts per million 10K (TPM10K). For gene $i$ of a given species, TPM is typically calculated as [@li2009rna]:
 
 $$ TPM_i = \frac{10^6 \times \theta_i}{\ell_i \times \displaystyle\sum_{i=1}^{n}\frac{\theta_j}{\ell_j}} $$
 
@@ -1581,11 +1681,23 @@ $$TPM10K_i= \frac{TPM_i \times n}{10^4}$$
 
 Where the sum of TPM10K values within a library is $10^2 \times n$ and the mean is $10^2$. By multiplying by $n$ we are able to account for different sequencing depths among species, and ensure a common mean. As $n$ is large, we divide by an arbitrary number (in this case $10^4$) in order to reduce the magnitude of the expression value.
 
+**_Strict Ortholog Filtering of Trees_**
+
+For Strict Ortholog Filtering of Trees (SOFT) analyses, single copy orthologs were obtained using Orthofinder 2 (v2.4.0) [@emms2019orthofinder]. Linear models used in SOFT analyses were constructed using `lm()`, following methods and code developed by Breschi et al. 2016 [@breschi2016gene], https://github.com/abreschi/Rscripts/blob/master/anova.R.  All SVGs and TVGs are genes for which both species and tissue explain greater than 75% of variance. Additionally, in SVGs, the proportion of variance explained by species is two times greater than that explained by tissues; while in TVGs the proportion of variance explained by tissues is two times greater than that explained by species.
+
+**_Phylogenetic analysis of gene expression_** 
+
+Gene trees were generated using the transcriptomes and genomes from `r species_tree$tip.label %>% length()` species [@munro2018improved] using Agalma v 2.0.0 [@Dunn:2013kw; @guang2021revising]. Following the `treefinder` step of Agalma v 2.0.0, amino acid data were exported and supplied to Orthofinder 2 (v2.3.8) [@emms2019orthofinder] for simultaneous co-estimation of gene trees with the published maximum likelihood species tree [@munro2018improved]. Within Orthofinder 2, the selected multiple sequence alignment method was MAFFT [@katoh2013mafft] and maximum likelihood tree inference method was IQ-tree with the LG+F+R4 substitution model [@nguyen2015iq]. 
+
+Phylogenetic analyses were conducted in R using `geiger`, `ape`, `phytools`, `Rphylopars`, and `hutan` [@ape2004; @doi:10.1093/sysbio/syv055; @goolsby2017rphylopars; @harmon2007geiger; @MEE3:MEE3169]. Phylogenetic trees were visualized in R using `ggtree` and `treeio` [@yu2017ggtree]. 
+
+Gene trees were filtered to exclude trees with a length threshold >2 and that had more than 0.25 branches with a default length value (that are indicative of branch length=0). Gene trees nodes were annotated as speciation events or duplication events, based on assignment by Orthofinder 2 [@emms2019orthofinder]. Speciation nodes were subsequently assigned a node ID equivalent to the species tree node, using species tip names from the gene tree to determine the most common recent ancestor in the species tree, using the `phytools` package. Due to the use of the species-overlap method by Orthofinder 2, some clades of single copy genes were assigned  as speciation events, although the topology is inconsistent with the species tree. To avoid time calibration issues, due to descendant nodes being assigned the same species node ID, descendant speciation nodes with the same species node ID were marked as null, and gene trees with nodes greater than 0.3 null nodes per internal node were excluded -- indicating widespread topological differences with the species tree. Additionally, only trees with one or more speciation events were retained, as speciation events are used for time calibrations. The gene trees were then time calibrated to the species tree using `chronos()` in the `ape` package, so that the branch lengths were scaled to the same equivalent length across all gene trees [@ape2004]. Some gene trees could not be calibrated against the node constraints from the species tree and were discarded, additionally gene trees with roots that exceeded a maximum root depth of 5 were excluded. Tips without expression values were then pruned out of the tree. Gene trees with fewer than three expression values at the tips were discarded, retaining only trees with three or more values.  Pruned and unpruned calibrated gene tree files are available as supplementary data.
+
 We then took the mean TPM10K value for each gene across replicates of the same zooid/tissue within a species and applied a log transformation. Using gene trees with expression values for each gene within a species at the tips, maximum likelihood ancestral trait values were generated at the nodes using the anc.recon() function in `Rphylopars` assuming a Brownian Motion model of evolution (Fig. \@ref(fig:methods-comp), step 2 & 3) [@goolsby2017rphylopars]. As not all zooids are present in all of the species, the trees were pruned down to the subset of tips with expression values for ancestral trait reconstructions. Node values were then added back to the unpruned tree with all of the reconstructed expression values. Change in expression was measured across a branch by taking the difference between a parent node and a child node, and then this difference is scaled by branch length (Fig. \@ref(fig:methods-comp), step 4).
 
 ## Acknowledgements {-}
 
-This work was supported by the National Science Foundation (DEB-1256695 and the Waterman Award). CM was also supported in part by a RI-EPSCoR Fellowship, NSF EPS-1004057. Analyses were conducted with computational resources and services at the Center for Computation and Visualization at Brown University, supported in part by the NSF EPSCoR EPS-1004057 and the State of Rhode Island. Analyses were also conducted at the Yale Center for Research Computing (YCRC). We would like to thank Steven Haddock, Lynne Christianson, and the whole crew of the Western Flyer for their help and expertise -- without them we would have been able to collect specimens. Additional thanks are due to Samuel Church for his assistance during one research cruise, and for productive conversations about comparative gene expression methods. 
+This work was supported by the National Science Foundation (DEB-1256695 and the Waterman Award). CM was also supported in part by a RI-EPSCoR Fellowship, NSF EPS-1004057. Analyses were conducted with computational resources and services at the Center for Computation and Visualization at Brown University, supported in part by the NSF EPSCoR EPS-1004057 and the State of Rhode Island. Analyses were also conducted at the Yale Center for Research Computing (YCRC). We would like to thank Steve Haddock, Lynne Christianson, and the whole crew of the Western Flyer for their help and expertise. Additional thanks are due to Samuel Church for his assistance during a research cruise, and for productive conversations about comparative gene expression methods. 
 
 \clearpage
 ## Supplementary data {-}
@@ -1644,7 +1756,6 @@ agalma_data<-DESeq2::plotPCA(dge$`HWI-ST625-73-C0JUVACXX-7-AGALMA2`@rld, intgrou
 percentVar_agalma <- round( 100 * attr(agalma_data, "percentVar") )
 
 agalma_pca <- ggplot(agalma_data, aes( PC1, PC2, color=individual, shape=treatment ) ) + scale_shape_manual(values=c("Gastrozooid developing"=15,"Gastrozooid mature"=0,"Pneumatophore"=8, "Nectophore developing"=19,"Palpons mature"=2,"Palpons B mature"=6,"Gonodendron male"=13,"Gonodendron female"=10,"Bract developing"= 7)) + geom_point(size=3) + xlab(paste0("PC1: ",percentVar_agalma[1],"% variance")) +  ylab(paste0("PC2:",percentVar_agalma[2],"% variance")) + guides(shape  = guide_legend(order = 1),color = guide_legend(order = 2))
-
 
 
 ```
@@ -1755,9 +1866,39 @@ knitr::include_graphics("Figures/Zooid_type.jpg",auto_pdf = getOption("knitr.gra
 ```
 
 
-(ref:wnt-plot) Top panel: Maximum likelihood gene tree of the Wnt family in Cnidaria, Wnt clades that include siphonophore sequences are highlighted. Bottom panel: Pruned gene tree of wnt genes in siphonophore species with expression values (TPM10K) at the tips and nodes. Developing gastrozooid expression in orange (above node), developing nectophore expression in green (below node). Red circles are duplication nodes and blue circles are speciation nodes.
+(ref:changes-branches) Mean changes of TPM10K along branches across all gene trees that correspond to branches in the species trees, error bar is one standard deviation. Top panel: species phylogeny with branch IDs given as letters.Lower panel: Distribution of changes along a species-equivalent branch in a gene tree, showing mean change in the empirical dataset and in the BM simulation. Treatment type is coded in colour, Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.
 
-```{r wnt-plot, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, fig.height=15, fig.width=15, fig.cap='(ref:wnt-plot)', fig.align = 'center'}
+```{r changes-branches, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap='(ref:changes-branches)', fig.align='center'}
+
+grid.arrange(tree_reference,branch_change2,sim_branch_change2,leg2, bottom="Branch",widths = c(2,2,0.5),layout_matrix = layout)
+
+```
+
+(ref:changes-branches2) Mean changes of expression ratios along branches across all gene trees that correspond to branches in the species tree, error bar is one standard deviation. Top panel: species phylogeny with branch IDs given as letters. Lower panel: Distribution of changes along a branch in a gene tree, showing mean change in the empirical dataset and in the BM simulation.  Treatment type is coded in colour, GasdevGasmat = developing gastrozooid / mature gastrozooid, NecdevGasmat = developing nectophore / mature gastrozooid, PalmatGasmat = mature palpon / mature gastrozooid, PneGasmat = Pneumatophore / mature gastrozooid.
+
+```{r changes-branches2, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap='(ref:changes-branches2)', fig.align='center'}
+
+grid.arrange(tree_reference,branch_change,sim_branch_change,leg, bottom="Branch",widths = c(2,2,0.5),layout_matrix = layout)
+
+```
+
+
+```{r variance-structure, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=6.5, fig.height=6, fig.pos='h', out.extra = '', fig.cap="Variance of TPM10K change across a branch plotted against the age of the parent node. Branch ID is coded in colour, values are separated by treatment. Gasmat = Mature Gastrozooid, Gasdev = Developing Gastrozooid, Necdev= Developing nectophore, Palmat = Mature palpon , Pne= Pneumatophore", fig.scap="Variance of change across a branch plotted against the age of the parent node.", fig.align='center'}
+
+grid.arrange(var_change_obs_noratio,legend2,var_change_sim_noratio, bottom="Node age of parent", left="Variance of change",widths = c(2,0.25),layout_matrix = layout3)
+
+```
+
+```{r variance-structure2, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=6.5, fig.height=6, fig.pos='h', out.extra = '', fig.cap="Variance of expression ratio change across a branch plotted against the age of the parent node. Branch ID is coded in colour, values are separated by treatment. GasdevGasmat = Developing Gastrozooid vs Mature Gastrozooid, NecdevGasmat= Developing nectophore vs Mature Gastrozooid, PalmatGasmat = Mature palpon vs Mature Gastrozooid, PneGasmat= Pneumatophore vs Mature Gastrozooid", fig.scap="Variance of change across a branch plotted against the age of the parent node.", fig.align='center'}
+
+grid.arrange(var_change_obs,legend,var_change_sim, bottom="Node age of parent", left="Variance of change",widths = c(2,0.25),layout_matrix = layout2)
+
+```
+
+
+(ref:wntplot) Top panel: Maximum likelihood gene tree of the Wnt family in Cnidaria, Wnt clades that include siphonophore sequences are highlighted. Bottom panel: Pruned gene tree of wnt genes in siphonophore species with expression values (TPM10K) at the tips and nodes. Developing nectophore/mature gastrozooid expression in green (above node), developing gastrozooid/mature gastrozooid expression in orange (below node). Changes across the branch are shown for developing gastrozooid/mature gastrozooid (orange). Red circles are duplication nodes and blue circles are speciation nodes.
+
+```{r wntplot, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, fig.height=15, fig.width=15, fig.cap='(ref:wntplot)', fig.align = 'center'}
 
 #pull gene tree digest
 
@@ -1773,33 +1914,61 @@ p<-p + geom_cladelabel(node=204, label="Wnt3", align=T, angle=270, hjust='center
 p<-p + geom_cladelabel(node=248, label="Wnt16", align=T, angle=270, hjust='center', offset=0.025, barsize=1) + theme(legend.position = "none") 
 
 nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==wnt_digest][[1]]
-tips1<-pull(nhx@data,"Gasdev")
-tips2<-pull(nhx@data,"Necdev")
+tips1<-pull(nhx@data,"Necdev")
+tips2<-pull(nhx@data,"Gasmat")
+tips11<-(tips1+1)/(tips2+1)
+
+tips3<-pull(nhx@data,"Gasdev")
+tips4<-pull(nhx@data,"Gasmat")
+tips22<-(tips3+1)/(tips4+1)
 p1<-nhx %>% ggtree()+ geom_tiplab(aes( label=phy_node_names),pch=1, hjust=-0.1)+geom_nodepoint(aes( color=Ev )) +xlim(c(0,2))
-p1<-p1+geom_text(aes(label=round(tips1,2)),vjust=-1,hjust=1, size=3, col="#F4A519")
-p1<-p1+geom_text(aes(label=round(tips2,2)),vjust=1.5,hjust=1, size=3, col="#A7C136")
+p1<-p1+geom_text(aes(label=round(tips11,2)),vjust=-1,hjust=1, size=3, col="#A7C136")
+p1<-p1+geom_text(aes(label=round(tips22,2)),vjust=1.5,hjust=1, size=3, col="#F4A519")
 p1<-p1 + geom_cladelabel(node=23, label="Wnt2", align=T, angle=270, hjust='center', offset=0.5, barsize=1)
 p1<-p1 + geom_cladelabel(node=31, label="Wnt9/10", align=T, angle=270, hjust='center', offset=0.5, barsize=1)
 p1<-p1 + geom_cladelabel(node=33, label="Wnt1", align=T, angle=270, hjust='center', offset=0.5, barsize=1)
 p1<-p1 + geom_cladelabel(node=34, label="Wnt3", align=T, angle=270, hjust='center', offset=0.5, barsize=1) + theme(legend.position = "none")
 
-grid.arrange(p,p1)
+edge <- change("Gasdev","Gasmat",nhx)
+p3<- p1 %<+% edge + geom_label(aes(x=branch, label=edge_num),label.size = 0.01,size=3, col="#F4A519")  
+grid.arrange(p,p3)
 
 ```
 
-```{r variance-structure, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=6.5, fig.height=6, fig.pos='h', out.extra = '', fig.cap="Variance of change across a branch plotted against the age of the parent node. Branch ID is coded in colour, values are separated by treatment. Gasdev = Developing Gastrozooid, Gasmat= Mature gastrozooid, Gonfem= Female gonodendron, Gonmal= Male gonodendron, Necdev= Developing nectophore, Palmat = Mature palpon, Pne= pneumatophore.", fig.scap="Variance of change across a branch plotted against the age of the parent node.", fig.align='center'}
+(ref:wnt4plot) Top panel: Maximum likelihood gene tree of the Wnt4 in Cnidaria. Bottom panel: Pruned gene tree of wnt4 genes in siphonophore species with expression values (TPM10K) at the tips and nodes. Developing nectophore/mature gastrozooid expression in green (above node), developing gastrozooid/mature gastrozooid expression in orange (below node). Changes across the branch are shown for developing gastrozooid/mature gastrozooid (orange). Red circles are duplication nodes and blue circles are speciation nodes.
 
-grid.arrange(var_change_obs,legend,var_change_sim, bottom="Node age of parent", left="Variance of change",widths = c(2,0.25),layout_matrix = layout2)
+```{r wnt4plot, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, fig.height=15, fig.width=15, fig.cap='(ref:wnt4plot)', fig.align = 'center'}
+
+#pull gene tree digest
+
+wnt_digest<-edges_tidy[grep("Protein Wnt-4",edges_tidy$blast_hit),] %>% .$gene_tree %>% unique()
+
+nhx_wider<-gene_trees_ace_calibrated[gene_trees_ace_digests==wnt_digest][[1]]
+p<-nhx_wider %>% ggtree()+geom_nodepoint(aes( color=Ev )) +xlim(c(0,2)) +geom_tiplab()
+
+
+nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==wnt_digest][[1]]
+
+nhx<-gene_trees_ace_calibrated_pruned[gene_trees_ace_digests==wnt_digest][[1]]
+tips1<-pull(nhx@data,"Necdev")
+tips2<-pull(nhx@data,"Gasmat")
+tips11<-(tips1+1)/(tips2+1)
+
+tips3<-pull(nhx@data,"Gasdev")
+tips4<-pull(nhx@data,"Gasmat")
+tips22<-(tips3+1)/(tips4+1)
+p1<-nhx %>% ggtree()+ geom_tiplab(aes( label=phy_node_names),pch=1, hjust=-0.1)+geom_nodepoint(aes( color=Ev )) +xlim(c(0,1))
+p1<-p1+geom_text(aes(label=round(tips11,2)),vjust=-1,hjust=1, size=3, col="#A7C136")
+p1<-p1+geom_text(aes(label=round(tips22,2)),vjust=1.5,hjust=1, size=3, col="#F4A519")
+
+
+edge <- change("Gasdev","Gasmat",nhx)
+
+p3<- p1 %<+% edge + geom_label(aes(x=branch, label=edge_num),label.size = 0.01,size=3, col="#F4A519")  
+grid.arrange(p,p3)
 
 ```
 
-(ref:fullvenom-plot) Maximum likelhood gene tree of the putative actinoporin-like toxin with all available species included. Red circles are duplication nodes and blue circles are speciation nodes.
-
-```{r fullvenom-plot, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, fig.height=15, fig.width=15, fig.cap='(ref:fullvenom-plot)', fig.align = 'center'}
-
-venom_p
-
-```
 
 \clearpage
 ### Software versions {-}
