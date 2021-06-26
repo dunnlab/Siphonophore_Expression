@@ -1,3 +1,9 @@
 # Siphonophore Expression
 
 This is a repository containing all of the code used to generate the manuscript "Evolution of gene expression across species and specialized zooids in Siphonophora".
+
+In this [manuscript](https://github.com/dunnlab/Siphonophore_Expression/blob/master/Manuscript.pdf), we investigate the differential gene expression patterns between distinct zooid types, as well as in a specialized tissue (the pneumatophore). Manuscript code, as well as many of the datafiles needed to complete the analyses, can be found here. However, some of the larger files are hosted on figshare (DOIs: 10.6084/m9.figshare.14838384, 10.6084/m9.figshare.14838372, 10.6084/m9.figshare.14838315, 10.6084/m9.figshare.14838090, 10.6084/m9.figshare.14829183). Raw sequence data and associated sampling metadata can be found on NCBI (BioProject ID PRJNA540747). 
+
+Analyses start with the script [Manuscript_prep](https://github.com/dunnlab/Siphonophore_Expression/blob/master/Manuscript_prep.R). This outputs an RData file that is read in by the script [ancestral_trait_recon](https://github.com/dunnlab/Siphonophore_Expression/blob/master/ancestral_trait_recon.R), which in turn outputs an RData file that is read in by the [main manuscript](https://github.com/dunnlab/Siphonophore_Expression/blob/master/Manuscript.Rmd) Rmd file. Many of the functions used in analyses are kept in a [functions](https://github.com/dunnlab/Siphonophore_Expression/blob/master/functions.R) file.
+
+A small blast analysis of Physalia toxins can be found [here](https://github.com/dunnlab/Siphonophore_Expression/tree/master/Physalia_toxin), and Wnt genes, based on supplementary data from [Condamine et al., 2019](https://www.sciencedirect.com/science/article/pii/S0012160618304093?via%3Dihub), can be found [here](https://github.com/dunnlab/Siphonophore_Expression/tree/master/Wnts).
