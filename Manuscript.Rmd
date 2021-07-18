@@ -547,14 +547,14 @@ readr::write_csv(edges_tidy_directional_export, "Supplementary_Data/Supplementar
 
 
 # Evolution of gene expression across species and specialized zooids in Siphonophora {-}
-Catriona Munro^1,2^,  Stefan Siebert^3^, Mark Howison^4^, Felipe Zapata^5^, Casey W. Dunn^6^
+Catriona Munro^1,2^, Felipe Zapata^3^, Mark Howison^4^, Stefan Siebert^5^, Casey W. Dunn^6^
 \newline
 \newline
 ^1^ Department of Ecology and Evolutionary Biology, Brown University, Providence, RI 02912, USA \newline
 ^2^ Current address: Collège de France, PSL Research University, CNRS, Inserm, Center for Interdisciplinary Research in Biology, 75005 Paris, France \newline
-^3^ Department of Molecular and Cellular Biology, University of California, Davis, California, 95616, USA \newline
+^3^ Department of Ecology and Evolutionary Biology, University of California Los Angeles, Los Angeles, CA 90095, USA \newline
 ^4^ Research Improving People's Lives (RIPL), Providence, RI, USA \newline
-^5^ Department of Ecology and Evolutionary Biology, University of California Los Angeles, Los Angeles, CA 90095, USA \newline
+^5^ Department of Molecular and Cellular Biology, University of California, Davis, California, 95616, USA \newline
 ^6^ Department of Ecology and Evolutionary Biology, Yale University, New Haven, CT 06520, USA
 
 
@@ -563,16 +563,16 @@ Catriona Munro^1,2^,  Stefan Siebert^3^, Mark Howison^4^, Felipe Zapata^5^, Case
 
 **Background**
 
-Siphonophores are complex colonial organisms, consisting of asexually-produced bodies (called zooids) that share a gastrovascular cavity but that are functionally specialized to specific tasks, including feeding, swimming, and reproducing. Though this extreme functional specialization has captivated biologists for generations, the genomic underpinnings of this phenomenon remain poorly understood. We use RNA-seq to investigate gene expression patterns in five zooids, and one specialized tissue (the pneumatophore, a gas filled float), across seven siphonophore species. Analyses of gene expression across genes and species present several challenges, which we address, in particular the identification of comparable homologous genes and appropriate normalization of expression across species.
+Siphonophores are complex colonial animals, consisting of asexually-produced bodies (called zooids) that are functionally specialized for specific tasks, including feeding, swimming, and sexual reproduction. Though this extreme functional specialization has captivated biologists for generations, its genomic underpinnings remain unknown. We use RNA-seq to investigate gene expression patterns in five zooids and one specialized tissue (pneumatophore) across seven siphonophore species. Analyses of gene expression across species present several challenges, including identification of comparable expression changes on gene trees with complex histories of speciation, duplication, and loss. Here, we conduct three analyses of expression. First, we examine gene expression within species. Then, we conduct classical analyses examining expression patterns across species.  Lastly, we introduce Speciation Branch Filtering, which allows us to examine the evolution of expression in a phylogenetic framework.
 
 **Results**
 
-Within species, we identified hundreds of zooid-specific genes, as well as a number of putative transcription factors showing differential expression in particular zooids and developmental stages. To compare expression across species, we introduce a novel expression metric and new analytical approaches. We found that gene expression patterns tended to be largely consistent in zooids with the same function across species, but also found evidence of large lineage specific shifts in gene expression.
+Within and across species, we identified hundreds of zooid-specific and species-specific genes, as well as a number of putative transcription factors showing differential expression in particular zooids and developmental stages. We found that gene expression patterns tended to be largely consistent in zooids with the same function across species, but also some large lineage-specific shifts in gene expression.
 
 **Conclusions**
 
-Differential gene expression analyses enable identification of a large number of genes with zooid-specific expression, however comparisons across species are limited in scope and largely qualitative. Classical comparative analyses enable the identification of species/zooid-specific expression patterns within orthologs. Using branch filtering methods, we extended analyses to a larger number of genes, and identified instances of lineage-specific expression, as well as shared expression within zooids and across species. 
-   
+Within-species analyses identify the greatest number of zooid-specific genes, but comparisons across species are limited. Traditional across species analyses focus on the tips of the phylogeny, and identify large-scale expression patterns that are zooid or species variable. Unlike other methods, Speciation Branch Filtering offers an evolutionary perspective into specific changes in expression within zooids along all focal branches, including internal branches. 
+
 
 ## Background {-}
 
@@ -592,13 +592,13 @@ In this study we use RNA-seq data to investigate the functional specialization a
 
 Second, we further account for gene and species effects to compare gene expression across genes and species. Normalized read counts produced by RNA-seq experiments are proportional to gene expression, but they are also impacted by factors that can vary across genes and species such as gene sequence and length. Therefore, to estimate and compare expected gene counts it is necessary to model such factors with unknown species- and gene-specific counting-efficiency coefficients [see @dunn2013phylogenetic]. A direct comparison of expected gene counts among species, however, can be misleading if differences in counts are simply due to differences in counting efficiency and not due to differences in expression. To address this issue, we use ratios of expected counts to compare expression across genes and species. Using ratios of counts, we are able to eliminate species- and gene- specific counting efficiency within species, as the unknown counting efficiency factor is in both the numerator and the denominator, and is thus removed prior to comparisons among species [@dunn2013phylogenetic]. 
 
-Third, we use a novel approach to investigate the evolution of gene expression on gene trees with complex evolutionary histories. Most evolutionary studies of gene expression focus exclusively on comparing expression values of strict orthologs (i.e., gene lineages related only by speciation events) which are shared across all species. We call this type of classical analysis Speciation Tree Filtering (STF) [e.g @Brawand:2011du; @cardoso2019gene; @Levin:2016bp; @yang2013organ]. This limits analyses to the subset of genes that have no evidence of duplication. This is an all or nothing approach, where gene trees or subtrees (clades) are retained if they have one sequence for each species, and discarded if there are multiple sequences in any of the species. Because this is usually such a small fraction of genes, traditional STF analyses discard a large fraction of the data, including many gene families that may be of interest to the investigator. 
+Third, we use a novel approach to investigate the evolution of gene expression on gene trees with complex evolutionary histories. Most evolutionary studies of gene expression focus exclusively on comparing expression values of strict orthologs (i.e., gene lineages related only by speciation events) which are shared across all species. Analyses of strict orthologs are limited to a subset of genes that have no evidence of duplication, and we call this approach Speciation Tree Filtering (STF) [e.g @Brawand:2011du; @cardoso2019gene; @Levin:2016bp; @yang2013organ]. This is an all or nothing approach, where gene trees or subtrees (clades) are retained if they have one sequence for each species, and discarded if there are multiple sequences in any of the species. Because this is usually such a small fraction of genes, traditional STF analyses discard a large fraction of the data, including many gene families that may be of interest to the investigator. 
 
 Because the history of genes is characterized by more complex scenarios involving gene duplication and speciation, we introduce a new method that takes advantage of this rich history to examine the evolution of gene expression across more genes and species. We call this method Speciation Branch Filtering (SBF) (Fig. \@ref(fig:methods-comp)), as we map expression data to gene phylogenies and identify equivalent branches in the species tree which are descended from speciation events in order to make valid comparisons across species. While STF is a gene tree filtering approach, where entire trees or subtrees are discarded due to even a single duplication event, SBF is a branch filtering approach. This means that SBF retains many informative branches from trees that would be removed by STF, and preserves many more evolutionary comparisons for analyses.
 
 Briefly, the principles of SBF are as follows: first we identify speciation and duplication events in a given gene tree, specifically labelling nodes that correspond to speciation events in the species tree (Fig. \@ref(fig:methods-comp), step 1). Next, we map gene expression values to the tips of the gene tree (Fig. \@ref(fig:methods-comp), step 2), and use phylogenetic methods to reconstruct expression values at the internal nodes (Fig. \@ref(fig:methods-comp), step 3). Expression values are mapped and reconstructed for each zooid/tissue separately, with the assumption that the structure is homologous across species. Then, we calculate scaled expression values across branches, by subtracting the expression value at the child node from the parent node, and dividing by branch length (branch lengths are calibrated against branches in the species tree) (Fig. \@ref(fig:methods-comp), step 4). Finally, we identify branches in the gene trees that correspond to equivalent branches in the species tree (hereafter species-equivalent branches) (Fig. \@ref(fig:methods-comp), step 5). Species-equivalent branches are gene tree branches with parent and child nodes that are both speciation events and that correspond to branches in the species tree. Each branch in the species tree is given a unique identifier (i.e., a letter) and the species-equivalent branches in gene trees are given the same identifier (Fig. \@ref(fig:methods-comp), step 5). This method enables the selection of branches within gene trees that are equivalent to branches within the species tree, and are thus comparable with one another across all gene trees. Unlike the STF approach, this approach considers equivalent branches that are descended from speciation events, but that have more complex evolutionary histories. For example, due to deeper gene duplication events, gene trees often contain multiple branches that correspond to the same branch in the species tree (Fig. \@ref(fig:methods-comp), step 5). Our method allows us to consider all of these branches. 
 
-Using the methods described above, combined with classical differential gene expression (DGE) analysis, we conducted DGE analyses among siphonophore zooids, and one specialized tissue (the pneumatophore, a gas filled float), in seven siphonophore species to address three questions. First, we analyzed differences in gene expression within species to identify patterns that define particular zooid types, and gain insight into the genes that may be playing a role in the structure, maintenance, and functioning of zooids. Second, we examined whether gene expression patterns could distinguish novel, distinct species-specific zooid types within particular species. Third we compared gene expression across the seven siphonophore species, to identify putative clade/lineage or zooid specific expression patterns. 
+Using the methods described above, combined with classical differential gene expression (DGE) analysis, we conducted DGE analyses among siphonophore zooids, and one specialized tissue (the pneumatophore, a gas filled float), in seven siphonophore species to address three questions. First, we analyzed differences in gene expression within species to identify patterns that define particular zooid types, and gain insight into the genes that may be playing a role in the structure, maintenance, and functioning of zooids. We also examined whether gene expression patterns could distinguish novel, distinct species-specific zooid types within particular species. Second, we compared gene expression across species, using STF followed by linear models to identify zooid- and species-variable genes. And third, we used phylogenetic methods and SBF to identify putative clade/lineage or zooid specific expression patterns. 
 
 (ref:methods-comp) New phylogenetic approach to identify evolutionary changes in gene expression, called Speciation Branch Filtering (SBF). Step 1, we label each of the nodes in the species tree, and identify equivalent speciation nodes across every gene tree (an exemplar is shown here). Step 2, we map expression values (TPM10K) to the tips (expression values are mapped and reconstructed for each homologous zooid separately). Step 3, we reconstruct ancestral trait expression values at all internal nodes where expression data are available. Step 4, we calculate scaled change in gene expression (child node expression - parent node expression / branch length). Branch length is calibrated to the species tree branch lengths. Step 5, we identify branches in gene trees that correspond to equivalent branches in the species tree. There may be more than one branch in a gene tree that corresponds to the same branch in the species tree.
 
@@ -1162,53 +1162,6 @@ For each species and zooid, we found GO term enrichment for biological processes
 
 Within the four best sampled species, we also identified `r x$short_blast_hit %>% unique() %>% length()` higher abundance putative transcription factors (`r length(Bargmannia_TF)` out of `r y[[2]] %>% sum()` in *Bargmannia elongata*, `r length(Frillagalma_TF)` out of `r y[[4]] %>% sum` identified in *Frillagalma vityazi*, `r length(Agalma_TF)` out of `r y[[1]] %>% sum()` in *Agalma elegans* and `r length(Nanomia_TF)` out of `r y[[5]] %>% sum()` identified  in *Nanomia bijuga*). Many of these transcription factors have higher expression in several zooids regardless of developmental stage (both mature and developing zooids), and a subset have higher expression only in particular zooids and developmental stages (Fig. \@ref(fig:transcription-factors)). 
 
-```{r summarize-libraries, verbose= FALSE, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
-
-summary<-lapply(e,function(object){
-  x=data.frame(
-    Species=object@species, 
-    Genes_in_trees=length(rownames(object@x)[rownames(object@x) %in% reduced_nodes$sequence_ids]),
-    Genes_trees=reduced_nodes$gene_tree[reduced_nodes$sequence_ids %in% rownames(object@x)] %>% unique() %>% length()
-    )
-  x$Species<-as.character(x$Species)
-  return(x)})
-
-summary<-summary %>% dplyr::bind_rows() %>% arrange(desc(Genes_in_trees))
-names(summary)<-c("Species", "Gene trees","Unique gene trees")
-
-expression_data<-lapply(dge, function(object){
-if(object@ddsMF$treatment=="Tentacle developing"){
-  x=data.frame(
-    Genes= DESeq2::counts(object@ddsMF) %>% nrow(),
-    Zooids=object@ddsMF$treatment[!object@ddsMF$treatment=="Tentacle developing"] %>% unique() %>% length()
-  )
-}
-    else{
-    x=data.frame(
-    Genes= DESeq2::counts(object@ddsMF) %>% nrow(),
-    Zooids=object@ddsMF$treatment %>% unique() %>% length()
-  )
-  return(x)
-  }
-})
-
-expression_data<-expression_data %>% dplyr::bind_rows()
-
-expression_data$Species<-c("Agalma elegans","Bargmannia elongata","Apolemia lanosa","Frillagalma vityazi","Nanomia bijuga","Physalia physalis","Diphyes dispar")
-
-summary<- summary %>% dplyr::left_join(expression_data)
-
-names(summary) <- c("Species","Number of Genes in Gene Trees","Total Number of Gene Trees","Number of Genes","Number of Zooids Sampled")
-summary<- summary %>% select(Species,`Number of Genes`, `Number of Zooids Sampled`,`Number of Genes in Gene Trees`,`Total Number of Gene Trees`)
-
-summary %>% dplyr::mutate(
-    Species= cell_spec(Species, italic= TRUE)
-) %>% kable(caption="Number of genes per  species (library size), number of sampled zooids (at least two  replicates each, including developing and mature stages), total number of genes in gene trees (there can be multiple genes in a gene tree), and number of unique gene trees containing genes from this species.", caption.short ="Summary statistics for each of the sampled species, with details on the total number of genes in gene trees, and number of unique gene trees containing genes from this species.",booktabs=TRUE, align = c("l","c","c","c","c"), escape = FALSE) %>% kable_styling(full_width = F, font_size = 11) %>%
-  kableExtra::kable_styling(latex_options = "hold_position") %>%
-  column_spec(2:5, width = "5em")
-
-```
-
 ### Novel species-specific zooids: can expression patterns distinguish distinct zooid types? {-}
 
 In siphonophores, there are several instances of lineage-specific zooid diversification events. We investigated gene expression patterns between the novel zooid type and the hypothesized most closely related zooid type in three species. In *Bargmannia elongata* there are two morphologically distinct gastrozooids, that we termed "white" and "yellow" gastrozooids (Fig. \@ref(fig:novel-zooids)A and \@ref(fig:novel-zooids)B). The "yellow" gastrozooid is larger and darker and occurs as the 7th-10th gastrozooid on the stem [@dunn2005complex].  In the Portuguese man of war, *Physalia physalis*, the gastrozooid is unique compared to other gastrozooids in other species - it has a mouth, but no tentacle, and the basigaster region is greatly reduced [@Totton1960; @Mackie1960]. Meanwhile the tentacle is associated with another zooid, the tentacular palpon (Fig. \@ref(fig:novel-zooids)C) [@BARDI2007;@munro2019morphology; @Totton1960; @haeckel1888]. In *P. physalis*, both the gastrozooid and the tentacular palpon are considered to be subfunctionalized from an ancestral gastrozooid type [@munro2019morphology]. Finally, in *Agalma elegans*, there are thought to be at least two different palpon types: gastric palpons that arise at the base of the peduncle of the gastrozooid, and a palpon called the B-palpon (Fig. \@ref(fig:novel-zooids)D) [@dunn2006evolution]. The distinction between these two types of palpon is based on the location of these zooids - the gastrozooid is typically the last element of each cormidium, but based on the budding sequence, Dunn *et al* propose that the enlarged B-palpon is the last element in *A. elegans* [@dunn2006evolution]. Each of these cases represents a different type of novelty: in *Bargmannia elongata* the distinction between zooids was made based on size and color but not on obvious differences in function, in *P. physalis* the gastrozooids and tentacular palpons differ structurally and functionally, and finally in *A. elegans*, gastric palpons and B palpons differ only in colony location, development, and possibly size. 
@@ -1217,7 +1170,7 @@ In *Physalia physalis* `r dge_sig[[6]]$TenpalmatGasmat %>% nrow()` genes showed 
 
 Between the white mature gastrozooid and the yellow mature gastrozooid in *Bargmannia elongata*, few significantly differentially expressed genes were identified (`r dge_sig[[2]]$GaswhimatGasyelmat %>% nrow()` genes were up in "white" mature gastrozooids relative to `r dge_sig[[2]]$GasyelmatGaswhimat %>% nrow()` genes up in "yellow" gastrozooids) (supplementary file 4). Among genes that were significantly differentially expressed in either "white" or "yellow" gastrozooids relative to all other tissues, `r Bargmannia_Gasyelmat_unique %>% length()` genes were unique to "yellow" gastrozooids and not found in "white" gastrozooids, and `r Bargmannia_Gaswhimat_unique %>% length()` genes were found in "white" gastrozooids and not found in "yellow" gastrozooids. 
 
-Finally, in *Agalma elegans* very few significantly differentially expressed genes were identified between the B palpon and gastric palpons  (`r dge_sig[[1]]$PalBmatPalmat %>% nrow()` were significantly differentially expressed in B palpons and `r dge_sig[[1]]$PalmatPalBmat %>% nrow()` were significantly differentially expressed in gastric palpons (supplementary file 4). All three genes have no significant blast hit and did not map to any gene trees). Genes were identified that are significantly differentially expressed in B palpons relative to all other zooids (gastric palpons were excluded). Of this, `r Agalma_PalponB_unique %>% length()` genes were differentially expressed in the B palpons. Most of these genes overlapped with those differentially expressed in the gastric palpons relative to all other zooids (`r intersect(Agalma_PalponB_unique,Agalma_Palpon_unique) %>% length()` genes).
+Finally, in *Agalma elegans* very few significantly differentially expressed genes were identified between the B palpon and gastric palpons  (`r dge_sig[[1]]$PalBmatPalmat %>% nrow()` was significantly differentially expressed in B palpons and `r dge_sig[[1]]$PalmatPalBmat %>% nrow()` were significantly differentially expressed in gastric palpons (supplementary file 4). All three genes have no significant blast hit and did not map to any gene trees). Genes were identified that are significantly differentially expressed in B palpons relative to all other zooids (gastric palpons were excluded). Of this, `r Agalma_PalponB_unique %>% length()` genes were differentially expressed in the B palpons relative to all other zooids. Most of these genes overlapped with those differentially expressed in the gastric palpons relative to all other zooids (`r intersect(Agalma_PalponB_unique,Agalma_Palpon_unique) %>% length()` genes).
 
 ```{r uniqe-zooid-supp, verbose= FALSE, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
 
@@ -1243,27 +1196,14 @@ readr::write_csv(uniquezooidDE, "Supplementary_Data/Supplementaryfile4.csv", na 
 
 ### Comparative gene expression across species: can we identify lineage and zooid specific expression patterns? {-}
 
-**Speciation Tree Filtering** 
+**Classical analysis of gene expression across species** 
 
 ```{r soft, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE}
 Orthologs2<-read_tsv("strict_orthologs/Aug31/Single_Copy_Orthologue_Sequences/Strict_orthologs.fa")
 Orthologs2<-Orthologs2 %>% mutate(Gene=as.character(Gene))
 
-expression_pull<-function(object){
-x<-Fulldataframe %>% dplyr::select(c(sequence_ids, Gasdev, Palmat,Gasmat, Necdev, Pne, Gonmal, Gonfem ))
-subset<-Orthologs2[Orthologs2$Species %in% object@species,]
-tpm<-object@tpm[rownames(object@tpm) %in% subset$Gene,] %>% as.data.frame()
-treatment<-object@treatment %>% stringr::str_replace_all(.," ",".")
-species<-object@species %>% stringr::str_replace_all(.," ",".")
-col<-paste(treatment,object@individual, sep="_")
-col<-paste(rep(species,length(treatment)),col,sep="_")
-colnames(tpm)<-col
-tpm<- tpm %>% rownames_to_column(., var="Gene")
-tpm<-tpm %>%  left_join(Orthologs2)
-tpm <- tpm %>% dplyr::select(.,-c(Species,Gene))
-return(tpm)
-}
-
+Orthologs1<-read_tsv("strict_orthologs/Single_Copy_Orthologue_Sequences/Strict_orthologs.fa")
+Orthologs1<-Orthologs1 %>% mutate(Gene=as.character(Gene))
 
 expression_pull<-function(object){
 x<-Fulldataframe %>% dplyr::select(c(sequence_ids, Gasdev, Palmat,Gasmat, Necdev, Pne))
@@ -1278,6 +1218,7 @@ tpm<-tpm %>% left_join(subset)
 tpm <- tpm %>% dplyr::select(.,-c(Species,Gene))
 return(tpm)
 }
+
 
 test<-lapply(e[c(1,2,4,5)], expression_pull)
 test<-purrr::reduce(test,left_join)
@@ -1528,9 +1469,32 @@ Orthologs_tree<-Orthologs2 %>% na.omit %>% group_by(Orthogroup) %>% summarise(ge
 readr::write_csv(treatment_variable, "Supplementary_Data/Supplementaryfile7.csv", na = "NA")
 readr::write_csv(species_variable, "Supplementary_Data/Supplementaryfile8.csv", na = "NA")
 
+
+#### For all 7 species
+
+expression_pull3<-function(object){
+x<-Fulldataframe %>% dplyr::select(c(sequence_ids, Gasdev, Palmat,Gasmat, Necdev, Pne))
+subset<-Orthologs1[Orthologs1$Species %in% object@species,]
+tpm<-x[x$sequence_ids %in% subset$Gene,]
+#remove na columns
+tpm<-tpm %>% select_if(~sum(!is.na(.)) > 0)
+species<-object@species %>% stringr::str_replace_all(.," ",".")
+tpm<- tpm %>% dplyr::rename_at(vars(-sequence_ids), ~ paste(species,., sep="_"))
+tpm<- tpm %>% dplyr::rename(Gene=sequence_ids) %>% mutate(Gene = as.character(Gene))
+tpm<-tpm %>% left_join(subset)
+tpm <- tpm %>% dplyr::select(.,-c(Species,Gene))
+return(tpm)
+}
+
+test3<-lapply(e, expression_pull3)
+test3<-purrr::reduce(test3,left_join)
+
+rownames(test3)<-test3$Orthogroup
+test3<- test3 %>% na.omit()
+
 ```
 
-(ref:SOFT-plot) Results of Speciation Tree Filtering analyses. Top row: results using TPM10K expression values; Bottom row: results using TPM10K expression ratios. For both analyses of expression variance explained by species and tissue (right-hand column), we identified highly species-variable genes (SVG, red) and highly tissue-variable genes (TVG, blue). In SVGs, the proportion of variance explained by species is two times greater than that explained by tissues; while in TVGs the proportion of variance explained by tissues is two times greater than that explained by species. All SVGs and TVGs are genes for which both species and tissue explain greater than 75% of variance. A. PCA plot of expression values (TPM10K) of `r res %>% nrow()` strict ortholog genes, showing a species dominated clustering pattern. B.  The proportion of expression variance explained by species (x-axis) versus the proportion of expression variance explained by tissues (y-axis), using TPM10K expression values. C. PCA plot of expression ratios of `r res2 %>% nrow()` strict ortholog genes, showing a tissue dominated clustering pattern.  D. The proportion of expression variance explained by species (x-axis) versus the proportion of expression variance explained by tissues (y-axis), using expression ratios. Abbreviations: Gasdev = developing gastrozooid, Necdev = developing nectophore, Palmat = mature palpon, Pne = pneumatophore, Gasmat = mature gastrozooid.
+(ref:SOFT-plot) Results of classical gene expression analyses across species, using Speciation Tree Filtering followed by linear models. Top row (A & B): results using TPM10K expression values; Bottom row (C & D): results using TPM10K expression ratios. For both analyses of expression variance explained by species and tissue (right-hand column), we identified highly species-variable genes (SVG, red) and highly tissue-variable genes (TVG, blue). In SVGs, the proportion of variance explained by species is two times greater than that explained by tissues; while in TVGs the proportion of variance explained by tissues is two times greater than that explained by species. All SVGs and TVGs are genes for which both species and tissue explain greater than 75% of variance. A. PCA plot of expression values (TPM10K) of `r res %>% nrow()` strict ortholog genes, showing a species dominated clustering pattern. B.  The proportion of expression variance explained by species (x-axis) versus the proportion of expression variance explained by tissues (y-axis), using TPM10K expression values. C. PCA plot of expression ratios of `r res2 %>% nrow()` strict ortholog genes, showing a tissue dominated clustering pattern.  D. The proportion of expression variance explained by species (x-axis) versus the proportion of expression variance explained by tissues (y-axis), using expression ratios. Abbreviations: Gasdev = developing gastrozooid, Necdev = developing nectophore, Palmat = mature palpon, Pne = pneumatophore, Gasmat = mature gastrozooid.
 
 ```{r SOFT-plot, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE, fig.width=7.5, fig.height=7, fig.cap='(ref:SOFT-plot)', fig.align='center'}
 
@@ -1554,11 +1518,11 @@ knitr::include_graphics("figures/SOFT_analyses.pdf",auto_pdf = getOption("knitr.
 
 ```
 
-Most comparative studies of gene expression focus exclusively on strict 1:1 orthologs, requiring an assessment of orthology across all species. We call this type of analysis Speciation Tree Filtering (STF), as it limits analyses to a subset of genes with very specific evolutionary histories. Following this approach, we used Orthofinder 2 (v2.4.0) [@emms2019orthofinder] to identify a set of `r Orthologs2$Orthogroup %>% unique() %>% length()` strict orthologs for four of the best sampled species (*Agalma elegans*, *Bargmannia elongata*, *Frillagalma vityazi*, and *Nanomia bijuga*), of which `r stvariance %>% nrow()` orthologs had expression values in four zooids/tissues: gastrozooids (developing and mature), nectophores (developing), palpons (mature), and the pneumatophore. Using TPM10K alone, we found that orthologs clustered largely by species rather than zooid/ tissue (Fig. \@ref(fig:SOFT-plot)A). Following Breschi et al. @breschi2016gene (see methods), we used linear models to identify the proportion of variance that could be explained by species or zooid/tissue (Fig. \@ref(fig:SOFT-plot)B), and found that of `r stvariance  %>% nrow()` total orthologs, `r stvariance %>% filter(class=="SVG") %>% nrow()` species-variable genes (SVG), and `r stvariance %>% filter(class=="TVG") %>% nrow()` zooid/tissue-variable genes (TVG). 
+Most comparative studies of gene expression focus exclusively on strict 1:1 orthologs, requiring an assessment of orthology across all species. We call this type of analysis Speciation Tree Filtering (STF), as it limits analyses to a subset of genes with very specific evolutionary histories. Following this approach, we used Orthofinder 2 (v2.4.0) [@emms2019orthofinder] to identify strict orthologs. For all seven species, we identified `r Orthologs1$Orthogroup %>% unique() %>% length()` strict orthologs, of which `r test3 %>% nrow()` orthologs had expression data across all 7 species. In order to increase the number of genes for analysis, we focused on the four best sampled species (*Agalma elegans*, *Bargmannia elongata*, *Frillagalma vityazi*, and *Nanomia bijuga*). Using data from 4 taxa, we identified `r Orthologs2$Orthogroup %>% unique() %>% length()` strict orthologs, of which `r stvariance %>% nrow()` orthologs had expression values in four zooids/tissues: gastrozooids (developing and mature), nectophores (developing), palpons (mature), and the pneumatophore.  Using TPM10K alone, we found that orthologs clustered largely by species rather than zooid/ tissue (Fig. \@ref(fig:SOFT-plot)A). Following Breschi et al. @breschi2016gene (see methods), we used linear models to identify the proportion of variance that could be explained by species or zooid/tissue (Fig. \@ref(fig:SOFT-plot)B), and found that of `r stvariance  %>% nrow()` total orthologs, `r stvariance %>% filter(class=="SVG") %>% nrow()` species-variable genes (SVG), and `r stvariance %>% filter(class=="TVG") %>% nrow()` zooid/tissue-variable genes (TVG). 
 
 The strong species-dominated clustering observed when comparing expression values directly may be due to differences in counting efficiency between species, especially as we used reference transcriptomes [@dunn2013phylogenetic]. To account for this, we used ratios of expression values, using TMP10K expression values of the most commonly sampled zooid -- mature gastrozooid -- as the denominator [@dunn2013phylogenetic]. Using this approach, we found that orthologs clustered largely by zooid/tissue rather than species (Fig. \@ref(fig:SOFT-plot)C). Using linear models, we identified, out of `r stvariance2  %>% nrow()` orthologs, `r stvariance2 %>% filter(class=="SVG") %>% nrow()` species-variable genes (SVG), and `r stvariance2 %>% filter(class=="TVG") %>% nrow()` tissue-variable genes (TVG) (Fig. \@ref(fig:SOFT-plot)D). GO terms enriched among TVG included embryonic morphogenesis, embryo development, cartilage development, and a number of metabolic and biosynthetic processes. Meanwhile, SVG were enriched in GO terms such as cellular response to stress, DNA repair and cell cycle processes. A list of TVG and SVG can be found in supplementary files 7 and 8 respectively.  
 
-**Speciation Branch Filtering** 
+**Phylogenetic analysis of gene expression with Speciation Branch Filtering** 
 
 ```{r plot_tree, results='asis', echo=FALSE, message=FALSE, warning=FALSE, verbose= FALSE}
 
@@ -1654,9 +1618,9 @@ return(p)
 }
 ```
 
-For our Speciation Branch Filtering (SBF) analyses (see Fig. \@ref(fig:methods-comp) and methods), we used transcriptome and genome data from `r species_tree$tip.label %>% length()` cnidarian species to generate a total of `r gene_trees %>% length()` gene trees, of which `r gene_trees_ace_calibrated[!is.na(gene_trees_ace_calibrated)] %>% length()` gene trees passed filtering criteria (see Methods). We used Orthofinder 2 [@emms2019orthofinder] to reconcile the species tree and the gene trees and annotate each gene tree node as either a speciation or duplication event. The number of genes represented in these gene trees is shown in Table \@ref(tab:summarize-libraries). The internal nodes on these gene trees represent `r nodes_ace %>% filter(is.na(species) & Ev=="S") %>% nrow()` speciation events and `r nodes_ace %>% filter(is.na(species) & Ev=="D") %>% nrow()` duplication events. Expression values (TPM10K) were mapped to the tips of the gene trees for each zooid/tissue separately, and ancestral values were inferred at internal nodes with maximum likelihood. We focused on expression in a subset of zooids and tissues that are common across the sampled species: gastrozooids (developing and mature), nectophores (developing), palpons (mature), and the pneumatophore. The distribution of expression changes along species-equivalent branches are shown in figure \@ref(fig:changes-branches). 
+For our Speciation Branch Filtering (SBF) analyses (see Fig. \@ref(fig:methods-comp) and methods), we used transcriptome and genome data from `r species_tree$tip.label %>% length()` cnidarian species to generate a total of `r gene_trees %>% length()` gene trees, of which `r gene_trees_ace_calibrated[!is.na(gene_trees_ace_calibrated)] %>% length()` gene trees passed filtering criteria (branch length threshold <2, less than 0.25 branches/tree with default branch lengths, one or more speciation events present in the tree, fewer than 0.3 nodes that have descendant nodes with the same species node ID, that we able to be time calibrated and finally that have a root depth <5). We used Orthofinder 2 [@emms2019orthofinder] to reconcile the species tree and the gene trees and annotate each gene tree node as either a speciation or duplication event. The number of genes represented in these gene trees is shown in Table \@ref(tab:summarize-libraries). The internal nodes on these gene trees represent `r nodes_ace %>% filter(is.na(species) & Ev=="S") %>% nrow()` speciation events and `r nodes_ace %>% filter(is.na(species) & Ev=="D") %>% nrow()` duplication events. Expression values (TPM10K) were mapped to the tips of the gene trees for each zooid/tissue separately, and ancestral values were inferred at internal nodes with maximum likelihood. We focused on expression in a subset of zooids and tissues that are common across the sampled species: gastrozooids (developing and mature), nectophores (developing), palpons (mature), and the pneumatophore. The distribution of expression changes along species-equivalent branches are shown in figure \@ref(fig:changes-branches). 
 
-As with the STF analyses, we investigated the impact of counting efficiency on our comparative analyses. We used the TPM10K values at the tips and nodes to calculate expression ratios and calculated changes in expression ratios across a branch for pairs of tissues, using the mature gastrozooid values as the denominator. The distribution of expression ratio changes along species-equivalent branches (branches in the gene tree that correspond to equivalent branches in the species tree, and are descended from speciation events) are shown in figure \@ref(fig:changes-branches2). We found that the variance of change across a given species-equivalent branch is considerably higher for raw TPM10K values as compared with ratios of expression (Fig.\@ref(fig:variance-structure), Fig.  \@ref(fig:variance-structure2)). We also identified the number of gene tree branches that had a negative (change <= -2), positive (change >= 2) or neutral (change > -2 and < 2) change (Fig.\@ref(fig:neg-pos)). For each species-equivalent branch, we found more negative and positive branches than neutral branches when we used TPM10K values, while for expression ratios, we found that the majority of branches show no change across the branch. This suggests that as for the STF analyses, counting efficiency has a large impact on expression change and in turn leads to large gene/branch specific signal. For expression ratios, these results indicate that the vast majority of branches show close to 0 (neutral) change across the branch, suggesting that for closely related genes, expression ratios tend not to differ. 
+As with the STF and linear model analyses, we investigated the impact of counting efficiency on our comparative analyses. We used the TPM10K values at the tips and nodes to calculate expression ratios and calculated changes in expression ratios across a branch for pairs of tissues, using the mature gastrozooid values as the denominator. The distribution of expression ratio changes along species-equivalent branches (branches in the gene tree that correspond to equivalent branches in the species tree, and are descended from speciation events) are shown in figure \@ref(fig:changes-branches2). We found that the variance of change across a given species-equivalent branch is considerably higher for raw TPM10K values as compared with ratios of expression (Figs. \@ref(fig:variance-structure) & \@ref(fig:variance-structure2)). We also identified the number of gene tree branches that had a negative (change <= -2), positive (change >= 2) or neutral (change > -2 and < 2) change (Fig.\@ref(fig:neg-pos)). The mean number of species-equivalent branches considered in these analyses are shown in Table \@ref(tab:summarize-branches) -- this value reflects the mean number of branches across each zooid or zooid ratio (due to incomplete sampling, some zooids may have fewer or more branches; as seen in Fig.\@ref(fig:neg-pos)). For each species-equivalent branch, we found more negative and positive branches than neutral branches when we used TPM10K values, while for expression ratios, we found that the majority of branches show no change across the branch. This suggests that as for the STF analyses, counting efficiency has a large impact on expression change and in turn leads to large gene/branch specific signal. For expression ratios, these results indicate that the vast majority of branches show close to 0 (neutral) change across the branch, suggesting that for closely related genes, expression ratios tend not to differ. 
 
 (ref:neg-pos) Number of branches with negative, positive or neutral changes across species-equivalent branches. Top panel: species phylogeny with branch IDs given as letters. Bottom left panel: changes of TPM10K expression across each of the species-equivalent branches (IDs correspond to branch IDs shown in the species tree); bottom right panel: changes of expression ratios across species equivalent branches. Neutral change (green) is defined as <= 2 and >= -2, negative change (red) is defined as <-2, and positive change (blue) is defined as > 2. These units correspond to TPM10K ratios/substitutions per site. GasdevGasmat = developing gastrozooid / mature gastrozooid, NecdevGasmat = developing nectophore / mature gastrozooid, PalmatGasmat = mature palpon / mature gastrozooid, PneGasmat = Pneumatophore / mature gastrozooid. 
 
@@ -1673,13 +1637,28 @@ Changes_ratio<-Changes_ratio +guides(color=FALSE)
 
 layout4<-rbind(c(1,1,NA),c(2,3,4))
 
-grid.arrange(tree_reference, Changes_raw,Changes_ratio,legend4, bottom="Tissue",widths = c(2,2,0.25),layout_matrix = layout4)
+grid.arrange(tree_reference,Changes_raw,Changes_ratio,legend4, bottom="Tissue",widths = c(2,2,0.25),layout_matrix = layout4)
 
 ```
 
 Out of a total of `r edges_tidy_directional %>% .$gene_tree %>% unique %>% length()` final gene trees considered in these analyses, `r edges_tidy_directional %>% filter(change_direction=="Neutral") %>% .$gene_tree %>% unique %>% length()` gene trees contained branches with neutral changes, `r edges_tidy_directional %>% filter(change_direction=="Positive") %>% .$gene_tree %>% unique %>% length()` gene trees contained branches with positive changes, and `r edges_tidy_directional %>% filter(change_direction=="Negative") %>% .$gene_tree %>% unique %>% length()` gene trees contained branches with negative changes. Expression ratio changes across species-equivalent branches from all gene trees is available in supplementary file 9 (note: in this file 'blast hit' is the most frequent blast hit for the gene tree, gene identity should still be confirmed for each gene, particularly in large gene trees).
 
 The vast majority of gene trees contain species-equivalent branches with neutral changes, including a number of transcription factors and morphogenic signalling pathway genes. For example, in ratios of developing and mature gastrozooids, among the relevant species-equivalent branches in the Wnt gene phylogeny, changes are neutral across Wnt3 and Wnt2 branches, with the exception of a slight positive change across the branch leading to a *Diphyes dispar* Wnt2 paralog, suggesting a higher relative expression of this gene in the developing gastrozooid of *D. dispar* (Fig. \@ref(fig:wntplot)). For all zooid ratios, we find very consistent Wnt3 expression patterns with neutral or very small positive or negative changes in expression ratio across the branches. Indeed, across all cnidarians examined, Wnt3 has consistent localised expression at the oral pole, likely playing a role in axis formation and maintenance [@bagaeva2019wnt; @guder2006wnt; @hensel2014lineage; @hobmayer2000wnt; @momose2008maternally; @nawrocki2013expression; @sanders2015patterns]. However, for Pneumatophore/Gastrozooid ratios, some large changes are seen across branches K and L, leading to a *Agalma elegans* and *Nanomia bijuga* Wnt2 paralog respectively, likewise for Palpon/Gastrozooid a large change is seen across branch J, leading to a *Frillagalma vityazi* Wnt2 paralog. In *Nematostella vectensis* and *Hydractinia echinata*, Wnt2 is expressed in the middle of the polyp [@hensel2014lineage; @kusserow2005unexpected]. Without more detailed spatial expression patterns, it is difficult to know whether these differences in expression between species reflect species-specific differences in axial patterning and morphogenesis, such as an expansion or reduction of the expression domain. 
+
+```{r summarize-branches, verbose= FALSE, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
+
+###table
+
+tpm10kbranches<- edges_tidy %>% filter(treatment%in%c("Gasdev", "Gasmat", "Pne", "Necdev", "Palmat")) %>% group_by(S_new,treatment) %>% dplyr::summarise(nbranch=n())  %>% group_by(S_new) %>% summarize("Mean Number of Branches TPM10K" =mean(nbranch)) %>% rename("Species-equivalent branch"=S_new)
+
+ratio_branches <- edges_tidy %>% filter(treatment%in%c("GasdevGasmat", "PneGasmat", "NecdevGasmat", "PalmatGasmat")) %>% group_by(S_new,treatment) %>% dplyr::summarise(nbranch=n())  %>% group_by(S_new) %>% summarize("Mean Number of Branches ratio" =mean(nbranch)) %>% rename("Species-equivalent branch"=S_new)
+
+branches_table <-tpm10kbranches %>% left_join(ratio_branches) %>% kable(caption="Mean number of species-equivalent branches considered in raw TPM10K or expression ratio analyses.",booktabs=TRUE, align = c("c","c","c"), escape = FALSE) %>% kable_styling(font_size = 11) %>%
+  kableExtra::kable_styling(latex_options = "hold_position")
+
+branches_table
+
+```
 
 We also looked at gene trees with species-relative branches that have very large changes ( 5 < change < -5), representing putative lineage-specific expression patterns. In Frizzled5/8, Wnt4, and homeobox (putatively Hox-B8) gene-trees, for example, we found very large positive changes in ratios of developing gastroozoid/mature gastrozooids across the same species-equivalent branches, J (leading to *Frillagalma vityazi*) and D (leading to Euphysonectae, the clade comprising *A. elegans*, *N. bijuga*, and *F. vityazi*). In Frizzled5/8 for developing nectophores/gastrozooids we also see a large positive change across branch L (leading to *Nanomia bijuga*) and J (leading to *Frillagalma vityazi*) and negative change across branch K (leading to *Agalma elegans*). In ratios of developing nectophores/gastrozooids, we also found very large positive changes in branch J for Wnt-7b-like, Wnt-4, (putatively) Hox-B8 and NKX1-2. Likewise in pneumatophore/gastrozooid ratios, we also find large positive changes in branch J and L for Frizzled5/8, and a negative change across branch K. Across J, we also see positive changes in pneumatophore/gastrozooid in Hox-B8 and NKX1-2. Finally, for branch K, we see large positive changes in Wnt4 and Wnt7b-like. Many of these genes have been shown to have specific expression domains patterning cnidarian bodies [@hensel2014lineage; @kusserow2005unexpected; @ryan2007pre; @sinigaglia2013bilaterian], and further detailed expression analyses of these genes and others within the zooid are required to determine whether the patterns identified here reflect differences in expression domain between species and zooid. 
 
@@ -1693,13 +1672,15 @@ We also explored gene expression patterns in three zooid types that are unique t
 
 For "yellow" and "white" gastrozooids in *Bargmannia elongata*, the differential expression data point to few morphological or functional differences between these two zooids. Through pairwise differential expression patterns between "yellow" or "white" gastrozooids and other zooids within the colony we were able to identify hundreds of genes that are significantly expressed in one zooid and not the other. This suggests that these two gastrozooids may be distinct zooid types, although they are functionally very similar to one another. Sequencing at greater depth, and also functional work within this species may help clarify the nature of these differences. By contrast, there is no strong evidence in our data that the B palpon and gastric palpons in *Agalma elegans* are sufficiently different to constitute a novel zooid type. These findings suggest that location within the colony is not necessarily sufficient to designate a novel zooid type. 
 
-With our STF analyses we found that the vast majority of identified orthologs were neither exclusively species-variable or tissue-variable, however we were nevertheless able to identify a subset of either tissue- or species- variable genes. As has been observed for vertebrate organs, we find based on GO terms that identified species-variable genes tend to play a role in basic cellular functions (so-called 'housekeeping genes'), as compared to tissue-variable genes [@@breschi2016gene]. 
+With our STF and linear model analyses we found that the vast majority of identified orthologs were neither exclusively species-variable or tissue-variable, however we were nevertheless able to identify a subset of either tissue- or species- variable genes. As has been observed for vertebrate organs, we find based on GO terms that identified species-variable genes tend to play a role in basic cellular functions (so-called 'housekeeping genes'), as compared to tissue-variable genes [@@breschi2016gene]. 
 
-What can we learn from the SBF analyses, using ratios of expression data? It is important to stress that changes in expression ratios cannot tell us about changes in expression *magnitude*. A tissue-variable gene that is either highly or lowly expressed in, for example, nectophores relative to gastrozooids in all species, may show largely neutral changes across all species-equivalent branches. The sign (positive or negative) of change provides an indication of whether expression in the child node is relatively higher in the denominator or the numerator, relative to the parent node. We find overall that most expression ratios show very little change across species-equivalent gene tree branches -- suggesting that gene expression patterns tend to be largely consistent among species. Positive or negative changes across branches, especially very large changes, across branches, represent putative linage specific shifts in expression. Whether these reflect distinct morphological or functional changes in the tissues of a particular species or clade requires further validation -- a difficulty in this system, where the species are difficult to collect and maintain in the lab.
+What can we learn from the SBF analyses, using ratios of expression data? It is important to stress that changes in expression ratios cannot tell us about changes in expression *magnitude*. A tissue-variable gene (identified via linear models in classical analyses) that is either highly or lowly expressed in, for example, nectophores relative to gastrozooids in all species, may show largely neutral changes across all species-equivalent branches. The sign (positive or negative) of change provides an indication of whether expression in the child node is relatively higher in the denominator or the numerator, relative to the parent node. We find overall that most expression ratios show very little change across species-equivalent gene tree branches -- suggesting that gene expression patterns tend to be largely consistent among species. Positive or negative changes across branches, especially very large changes, across branches, represent putative linage specific shifts in expression. Whether these reflect distinct morphological or functional changes in the tissues of a particular species or clade requires further validation -- a difficulty in this system, where the species are difficult to collect and maintain in the lab.
 
 **Challenges and solutions in the analysis of the evolution of gene expression** 
 
-In this study we used phylogenetic comparative methods to investigate gene expression patterns within homologous zooids across species. To do this, we implemented a new approach called Speciation Branch Filtering. Using gene trees, we considered expression evolution within the context of the gene phylogeny, which may differ significantly from the species phylogeny. Where traditional approaches identify strict ortholog genes *before* conducting analyses, we use information from all gene copies within a gene tree regardless of their evolutionary history of duplication or speciation. By filtering our data by branches, we consider more genes than we would be able to with a strict ortholog approach, and additionally, we investigate expression patterns at both the tips and internal nodes of gene phylogenies. Although we focus here on expression following speciation events, it is also possible to compare expression following duplication and speciation events.
+In this study we used three different analyses to investigate gene expression patterns within homologous zooids across species, each are complementary and enable different possibilities for biological discovery. Within-species analyses focus on expression among zooids and tissues within a single species -- a very large number of genes identified in the transcriptome or genome can be considered, and the broader across species gene-tree need not necessarily be considered. This approach is especially useful for investigating expression patterns within novel zooids that do not have a clear homolog in other species. The classical across-species analysis as implemented here, using STF followed by linear models, relies on phylogenetic assumptions yet is a non-phylogenetic tip-focused approach where a single gene is identified per species, and where the identified differences in values across tips are due to changes along all branches in the tree. With linear models, we can identify genes with expression values that are common to a particular zooid across all species, or with expression that is specific to a particular species. However the vast majority of genes are neither zooid or species variable, and show more complex patterns of expression. We proposed a third approach, called Speciation Branch Filtering, that gives access to changes in expression across gene phylogenies, which may differ significantly from the species phylogeny.
+
+Where traditional approaches identify strict ortholog genes *before* conducting analyses, SBF uses information from all gene copies within a gene tree regardless of their evolutionary history of duplication or speciation. By filtering our data by branches, we consider expression patterns at both the tips and internal nodes of gene phylogenies. We are thus able to identify shifts in expression leading to tips as well as shifts in expression leading to particular clades. Although we focus here on expression following speciation events, it is also possible to compare expression following duplication and speciation events.
 
 Using ancestral trait reconstruction, we also overcame sampling issues at the tips of the gene and species phylogeny, as expression values of different treatments can be reconstructed at deep internal nodes, even where there may be inconsistent sampling at the tips. That is, even if expression values are missing for a given tissue and gene in a gene phylogeny, we are still able to examine expression patterns within this gene tree. By contrast, in the Species Tree Filtering analyses, incomplete sampling in the expression matrix leads to the elimination of the ortholog from the analysis. 
 
@@ -1707,14 +1688,14 @@ As with all methods that rely on mapping to reference transcriptomes rather than
 
 **Conclusions** 
 
-With the expansion of functional genomic tools, including RNA-seq and single cell sequencing methods, there is considerable interest in looking not only at how genomic variation gives rise to phenotypic diversity in a single species or organism, but also at how functional genomic variation shapes phenotypic diversity across multiple closely and distantly related species to understand broader evolutionary patterns and processes [@Brawand:2011du; @barbosa2012evolutionary; @breschi2016gene; @cardoso2019gene; @clarke2017evolutionary; @doi:10.1093/gbe/evw155; @merkin2012evolutionary; @necsulea2014evolution; @perry2012comparative;  @Levin:2016bp; @sudmant2015meta; @ma2018comparative; @yang2013organ; @zhang2014comparative; @10.1093/molbev/msz212; @fukushima2020amalgamated]. Many of these analyses have the goal of identifying shared expression patterns among modular biological units (cell type, tissue, organ, zooid) across species, in order to identify commonalities in expression patterns among species. This is of particular interest for medically orientated fields interested in understanding the extent to which expression results can be extrapolated from one model organism to another. Another goal is to identify expression patterns in a particular biological unit that are unique to a particular species or even clade. For these questions, within-species DGE analyses provide the greatest depth, in terms of number of genes investigated, however comparisons between species on the basis of within-species DGE are limited and largely qualitative. Here we use two approaches to investigate expression patterns in a quantitative manner across homologous tissues, STF and SBF. Classic STF analyses enabled the investigation of a smaller number of strict orthologs that vary in a tissue or species specific manner, however our ability to investigate lineage or especially clade specific patterns of expression in a given zooid are more limited. Meanwhile SBF also focuses on a subset of genes, also with specific evolutionary histories (descended from speciation events), but it enables the identification of expression patterns that vary little among genes/species, as well as expression patterns that show strong lineage or clade specific patterns for a given zooid.
+With the expansion of functional genomic tools, including RNA-seq and single cell sequencing methods, there is considerable interest in looking not only at how genomic variation gives rise to phenotypic diversity in a single species or organism, but also at how functional genomic variation shapes phenotypic diversity across multiple closely and distantly related species to understand broader evolutionary patterns and processes [@Brawand:2011du; @barbosa2012evolutionary; @breschi2016gene; @cardoso2019gene; @clarke2017evolutionary; @doi:10.1093/gbe/evw155; @merkin2012evolutionary; @necsulea2014evolution; @perry2012comparative;  @Levin:2016bp; @sudmant2015meta; @ma2018comparative; @yang2013organ; @zhang2014comparative; @10.1093/molbev/msz212; @fukushima2020amalgamated]. Many of these analyses have the goal of identifying shared expression patterns among modular biological units (cell type, tissue, organ, zooid) across species, in order to identify commonalities in expression patterns among species. This is of particular interest for medically orientated fields interested in understanding the extent to which expression results can be extrapolated from one model organism to another. Another goal is to identify expression patterns in a particular biological unit that are unique to a particular species or even clade. For these questions, within-species DGE analyses provide the greatest depth, in terms of number of genes investigated, however comparisons between species on the basis of within-species DGE are limited and largely qualitative. Here we use two approaches to investigate expression patterns in a quantitative manner across homologous tissues, STF and SBF. Classic STF analyses in conjunction with linear models enabled the investigation of a smaller number of strict orthologs that vary in a tissue or species specific manner, however our ability to investigate lineage or especially clade specific patterns of expression in a given zooid are more limited. Meanwhile SBF also focuses on a subset of genes, also with specific evolutionary histories (descended from speciation events), but it enables the identification of expression patterns that vary little among genes/species, as well as expression patterns that show strong lineage or clade specific patterns for a given zooid. 
 
 ## Methods {-}
 
 All scripts for the analyses are available in a git repository at https://github.com/dunnlab/Siphonophore_Expression. Additional data files required for analyses that are too large for the github repository can be found on Figshare with the following DOIs: 10.6084/m9.figshare.14838384, 10.6084/m9.figshare.14838372, 10.6084/m9.figshare.14838315, 10.6084/m9.figshare.14838090, 10.6084/m9.figshare.14829183. The most recent commit at the time of the analysis presented here was XXXX.
 
 **Collecting** \newline
-Specimens were collected in the north-eastern Pacific Ocean in Monterey Bay and, in the case of _Physalia physalis_ the Gulf of Mexico. Specimens were collected by remotely operated vehicle (ROV) or during blue-water SCUBA dives. *Physalia* specimens were collected by hand from the beach after being freshly washed on-shore by prevailing winds. Available physical vouchers have been deposited at the Peabody Museum of Natural History (Yale University), New Haven, CT. Specimens were relaxed using 7.5% MgCl~2~ hexahydrate in Milli-Q water at a ratio of 1/3 MgCl~2~ and 2/3 seawater. Zooids were subsequently dissected from the colony and flash frozen in liquid nitrogen. Colonies were cooled to collection temperatures (e.g 4 degrees C for deep sea species) while the dissections took place. Dissections took no longer than 15-20 minutes. In the case of large colonies, the stem was cut and only partial sections of the colony were placed under the microscope at a given time. Each replicate individual represents a genetically distinct colony from the same species. Replicate specimens were of an equivalent colony size, and zooid replicates were also equivalent sizes. Larger zooid types, such as gastrozooids, were sampled as a single zooid, but smaller zooids were pooled. Pooled zooids were of a comparable maturity and sampled from the same location in a single colony. 
+Specimens were collected in the north-eastern Pacific Ocean in Monterey Bay and, in the case of _Physalia physalis_ the Gulf of Mexico. Specimens were collected by remotely operated vehicle (ROV) or during blue-water SCUBA dives. *Physalia* specimens were collected by hand from the beach after being freshly washed on-shore by prevailing winds. Available physical vouchers have been deposited at the Peabody Museum of Natural History (Yale University), New Haven, CT. Specimens were relaxed using 7.5% MgCl~2~ hexahydrate in Milli-Q water at a ratio of 1/3 MgCl~2~ and 2/3 seawater. Zooids were subsequently dissected from the colony and flash frozen in liquid nitrogen. Colonies were cooled to collection temperatures (e.g 4 degrees C for deep sea species) while the dissections took place. Dissections took no longer than 15-20 minutes. In the case of large colonies, the stem was cut and only partial sections of the colony were placed under the microscope at a given time. Each replicate individual represents a genetically distinct colony from the same species. Replicate specimens were of an equivalent colony size, and zooid replicates were also equivalent sizes. Larger zooid types, such as gastrozooids, were sampled as a single zooid, but smaller zooids were pooled. Pooled zooids were of a comparable maturity and sampled from the same location in a single colony. Sampling data, including time, date, depth, and voucher ID, can be found in supplementary file 10. 
 
 **Sequencing** \newline
 mRNA was extracted directly from tissue using Zymo Quick RNA MicroPrep (Zymo #R1050), including a DNase step, and subsequently prepared for sequencing using the Illumina TruSeq Stranded Library Prep Kit (Illumina, #RS-122-2101). 50 base-pair single-end libraries were all sequenced on the HiSeq 2500 sequencing platform. Three sequencing runs were conducted, representing three full flow cells. To avoid potential run/lane confounding effects, where possible, libraries of multiple zooids/tissue of a single individual in a species were barcoded and pooled in a single sequencing lane, and replicate lanes of zooids/tissue from different individuals of the same species were sequenced in separate runs. Additionally, two libraries were run as technical replicates across all runs and many lanes, for a total of 20 technical replicates. Sequences, along with sampling metadata, are publicly available on NCBI under BioProject ID PRJNA540747.
@@ -1756,7 +1737,7 @@ To examine if expression values in our dataset evolve under Brownian Motion (BM)
 
 ## Acknowledgements {-}
 
-This work was supported by the National Science Foundation (DEB-1256695, the Waterman Award, and OCE-1829835). CM was also supported in part by a RI-EPSCoR Fellowship, NSF EPS-1004057. Analyses were conducted with computational resources and services at the Center for Computation and Visualization at Brown University, supported in part by the NSF EPSCoR EPS-1004057 and the State of Rhode Island. Analyses were also conducted at the Yale Center for Research Computing (YCRC). We would like to thank Steve Haddock, Lynne Christianson, and the whole crew of the Western Flyer for their help and expertise. Additional thanks are due to Samuel Church for his assistance during a research cruise, and for productive conversations about comparative gene expression methods. 
+This work was supported by the National Science Foundation (DEB-1256695, the Waterman Award). CM was also supported in part by a RI-EPSCoR Fellowship, NSF EPS-1004057. Analyses were conducted with computational resources and services at the Center for Computation and Visualization at Brown University, supported in part by the NSF EPSCoR EPS-1004057 and the State of Rhode Island. Analyses were also conducted at the Yale Center for Research Computing (YCRC). We would like to thank Steve Haddock, Lynne Christianson, and the whole crew of the Western Flyer for their help and expertise. Additional thanks are due to Samuel Church for his assistance during a research cruise, and for productive conversations about comparative gene expression methods. 
 
 \clearpage
 ## Supplementary data {-}
@@ -1921,6 +1902,53 @@ x %>% ggplot() + geom_point(aes(zooid, short_blast_hit,col=species),position=pos
 ```{r novel-zooids, echo=FALSE, message=F, warning=FALSE, verbose= FALSE, out.height='0.5\\textheight', out.width='0.5\\textheight', fig.cap= '(ref:novel-zooids)', fig.scap='(ref:novel-zooidsshort)', fig.align = 'center'}
 
 knitr::include_graphics("Figures/Zooid_type.jpg",auto_pdf = getOption("knitr.graphics.auto_pdf", FALSE))
+
+```
+
+```{r summarize-libraries, verbose= FALSE, message = FALSE, echo=FALSE, comment=NA, warning=FALSE}
+
+summary<-lapply(e,function(object){
+  x=data.frame(
+    Species=object@species, 
+    Genes_in_trees=length(rownames(object@x)[rownames(object@x) %in% reduced_nodes$sequence_ids]),
+    Genes_trees=reduced_nodes$gene_tree[reduced_nodes$sequence_ids %in% rownames(object@x)] %>% unique() %>% length()
+    )
+  x$Species<-as.character(x$Species)
+  return(x)})
+
+summary<-summary %>% dplyr::bind_rows() %>% arrange(desc(Genes_in_trees))
+names(summary)<-c("Species", "Gene trees","Unique gene trees")
+
+expression_data<-lapply(dge, function(object){
+if(object@ddsMF$treatment=="Tentacle developing"){
+  x=data.frame(
+    Genes= DESeq2::counts(object@ddsMF) %>% nrow(),
+    Zooids=object@ddsMF$treatment[!object@ddsMF$treatment=="Tentacle developing"] %>% unique() %>% length()
+  )
+}
+    else{
+    x=data.frame(
+    Genes= DESeq2::counts(object@ddsMF) %>% nrow(),
+    Zooids=object@ddsMF$treatment %>% unique() %>% length()
+  )
+  return(x)
+  }
+})
+
+expression_data<-expression_data %>% dplyr::bind_rows()
+
+expression_data$Species<-c("Agalma elegans","Bargmannia elongata","Apolemia lanosa","Frillagalma vityazi","Nanomia bijuga","Physalia physalis","Diphyes dispar")
+
+summary<- summary %>% dplyr::left_join(expression_data)
+
+names(summary) <- c("Species","Number of Genes in Gene Trees","Total Number of Gene Trees","Number of Genes","Number of Zooids Sampled")
+summary<- summary %>% select(Species,`Number of Genes`, `Number of Zooids Sampled`,`Number of Genes in Gene Trees`,`Total Number of Gene Trees`)
+
+summary %>% dplyr::mutate(
+    Species= cell_spec(Species, italic= TRUE)
+) %>% kable(caption="Number of genes per  species (library size), number of sampled zooids (at least two  replicates each, including developing and mature stages), total number of genes in gene trees (there can be multiple genes in a gene tree), and number of unique gene trees containing genes from this species.", caption.short ="Summary statistics for each of the sampled species, with details on the total number of genes in gene trees, and number of unique gene trees containing genes from this species.",booktabs=TRUE, align = c("l","c","c","c","c"), escape = FALSE) %>% kable_styling(full_width = F, font_size = 11) %>%
+  kableExtra::kable_styling(latex_options = "hold_position") %>%
+  column_spec(2:5, width = "5em")
 
 ```
 
