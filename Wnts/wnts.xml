@@ -70,4 +70,40 @@ Clytia@68707	CheWnt1b	315	66	357	3.23e-35	27.703
 Clytia@68707	CheWnt11a	318	50	357	1.83e-27	25.641
 Clytia@68707	CheWnt11b	314	68	349	8.92e-26	24.579
 Clytia@68707	CheWnt8	217	65	242	3.10e-24	30.168
-# BLAST processed 4 queries
+# BLASTP 2.7.1+
+# Query: Clytia@77552
+# Database: /Users/catmunro/Dropbox/Git/Siphonophore_Expression/Wnts/blastdb/wnt
+# Fields: query id, subject id, subject length, q. start, q. end, evalue, % identity
+# 13 hits found
+Clytia@77552	CheWntA	318	11	364	0.0	88.983
+Clytia@77552	CheWnt2	326	17	364	1.08e-51	32.493
+Clytia@77552	CheWnt1	321	52	355	2.85e-45	30.032
+Clytia@77552	CheWnt3	327	48	364	1.72e-43	28.788
+Clytia@77552	CheWnt5b	324	83	364	1.39e-42	31.313
+Clytia@77552	CheWnt6	308	69	358	5.98e-40	30.743
+Clytia@77552	CheWnt4	270	83	364	8.76e-39	29.693
+Clytia@77552	CheWnt5	323	83	364	9.59e-39	31.507
+Clytia@77552	CheWnt1b	315	66	358	7.02e-34	29.316
+Clytia@77552	CheWnt7	311	52	364	6.31e-27	27.245
+Clytia@77552	CheWnt11b	314	58	355	1.65e-26	24.837
+Clytia@77552	CheWnt11a	318	54	364	3.92e-25	24.528
+Clytia@77552	CheWnt8	217	72	260	2.05e-17	25.773
+# BLASTP 2.7.1+
+# Query: Clytia@120127
+# Database: /Users/catmunro/Dropbox/Git/Siphonophore_Expression/Wnts/blastdb/wnt
+# Fields: query id, subject id, subject length, q. start, q. end, evalue, % identity
+# 13 hits found
+Clytia@120127	CheWnt7	311	27	358	0.0	93.675
+Clytia@120127	CheWnt3	327	26	358	5.07e-46	31.871
+Clytia@120127	CheWnt1	321	66	348	2.55e-39	30.796
+Clytia@120127	CheWnt2	326	51	358	2.48e-34	29.355
+Clytia@120127	CheWnt4	270	72	358	1.04e-32	29.310
+Clytia@120127	CheWnt6	308	66	358	2.40e-29	25.085
+Clytia@120127	CheWnt5b	324	74	358	9.65e-29	28.671
+Clytia@120127	CheWntA	318	46	358	8.25e-28	26.183
+Clytia@120127	CheWnt5	323	67	358	1.38e-24	28.136
+Clytia@120127	CheWnt1b	315	43	352	1.43e-23	25.466
+Clytia@120127	CheWnt11b	314	39	339	3.79e-20	24.172
+Clytia@120127	CheWnt8	217	64	257	1.82e-15	24.227
+Clytia@120127	CheWnt11a	318	182	357	3.22e-09	24.157
+# BLAST processed 6 queries

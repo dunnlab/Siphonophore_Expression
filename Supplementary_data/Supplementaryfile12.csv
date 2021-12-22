@@ -1,0 +1,21 @@
+GO.ID,Term,Annotated,Significant,Expected,classicFisher
+GO:0006576,cellular biogenic amine metabolic proces...,11,10,3.11,2.6e-05
+GO:0044106,cellular amine metabolic process,17,11,4.81,0.0019
+GO:0009308,amine metabolic process,18,11,5.1,0.0036
+GO:0009617,response to bacterium,41,20,11.61,0.0041
+GO:1901264,carbohydrate derivative transport,28,15,7.93,0.0041
+GO:0019674,NAD metabolic process,14,9,3.96,0.0053
+GO:0006595,polyamine metabolic process,4,4,1.13,0.0064
+GO:0009435,NAD biosynthetic process,10,7,2.83,0.0074
+GO:0001522,pseudouridine synthesis,6,5,1.7,0.0083
+GO:0006568,tryptophan metabolic process,6,5,1.7,0.0083
+GO:0006586,indolalkylamine metabolic process,6,5,1.7,0.0083
+GO:0009310,amine catabolic process,6,5,1.7,0.0083
+GO:0042402,cellular biogenic amine catabolic proces...,6,5,1.7,0.0083
+GO:0070050,neuron cellular homeostasis,6,5,1.7,0.0083
+GO:0097164,ammonium ion metabolic process,22,12,6.23,0.0083
+GO:1901293,nucleoside phosphate biosynthetic proces...,82,33,23.22,0.0120
+GO:0006468,protein phosphorylation,232,81,65.69,0.0127
+GO:0031396,regulation of protein ubiquitination,18,10,5.1,0.0135
+GO:0042742,defense response to bacterium,21,11,5.95,0.0167
+GO:0006936,muscle contraction,16,9,4.53,0.0172
