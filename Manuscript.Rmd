@@ -1809,7 +1809,7 @@ To examine if expression values in our dataset evolve under Brownian Motion (BM)
 
 ## Data Availability {-}
 
-All scripts for the analyses are available in a git repository at https://github.com/dunnlab/Siphonophore_Expression. The most recent commit at the time of the analysis presented here was f980b80. Additional data files required for analyses that are too large for the github repository can be found on Figshare with the following DOIs: 10.6084/m9.figshare.14838384, 10.6084/m9.figshare.14838372, 10.6084/m9.figshare.14838315, 10.6084/m9.figshare.14838090, 10.6084/m9.figshare.14829183. Sequences, along with sampling metadata, are publicly available on NCBI under BioProject ID PRJNA540747.
+All scripts for the analyses are available in a git repository at https://github.com/dunnlab/Siphonophore_Expression. The most recent commit at the time of the analysis presented here was f980b80. The git repository is available as a supplementary zipped folder. Additional data files required for analyses that are too large for the github repository can be found on Figshare with the following DOIs: 10.6084/m9.figshare.14838384, 10.6084/m9.figshare.14838372, 10.6084/m9.figshare.14838315, 10.6084/m9.figshare.14838090, 10.6084/m9.figshare.14829183. Sequences, along with sampling metadata, are publicly available on NCBI under BioProject ID PRJNA540747.
 
 ## Competing interests {-}
 
